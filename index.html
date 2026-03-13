@@ -456,6 +456,11 @@ const CONFIG = {
   currentYear: new Date().getFullYear(),
 };
 
+// Fallback: se l'anno corrente non è nei dati, usa il più recente disponibile
+if (!DATA[CONFIG.currentYear]) {
+  CONFIG.currentYear = Math.max(...Object.keys(DATA).map(Number));
+}
+
 // ============================================================
 // DATI — sostituisci con fetch dal tuo Sheet pubblicato
 // Struttura: per anno → per mese (0=gen .. 11=dic)
