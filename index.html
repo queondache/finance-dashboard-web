@@ -1,811 +1,386 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>economia personale</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>economia personale</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  :root {
+    --purple: #534AB7; --purple-light: #EEEDFE;
+    --blue: #378ADD; --green: #1D9E75;
+    --amber: #EF9F27; --gray: #888780;
+    --red: #D85A30; --bg: #f8f7f4;
+    --card: #ffffff; --text: #1a1a1a;
+    --text-muted: #6b6a66; --border: rgba(0,0,0,0.08);
+    --radius: 12px; --radius-sm: 8px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
 
-    :root {
-      --purple: #534AB7;
-      --purple-light: #EEEDFE;
-      --teal: #1D9E75;
-      --teal-light: #E1F5EE;
-      --amber: #EF9F27;
-      --amber-light: #FAEEDA;
-      --blue: #378ADD;
-      --blue-light: #E6F1FB;
-      --gray: #888780;
-      --gray-light: #F1EFE8;
-      --coral: #D85A30;
-      --bg: #F7F7F5;
-      --surface: #FFFFFF;
-      --border: rgba(0,0,0,0.08);
-      --text: #1a1a18;
-      --text-muted: #888780;
-      --radius: 12px;
-      --radius-sm: 8px;
-    }
+  #login-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--bg); }
+  .login-box { background: var(--card); border-radius: var(--radius); padding: 2.5rem 2rem; width: 100%; max-width: 340px; border: 1px solid var(--border); }
+  .login-box h1 { font-size: 18px; font-weight: 500; margin-bottom: 6px; }
+  .login-box p { font-size: 13px; color: var(--text-muted); margin-bottom: 1.5rem; }
+  .login-box input { width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 15px; outline: none; background: var(--bg); color: var(--text); margin-bottom: 12px; }
+  .login-box input:focus { border-color: var(--purple); }
+  .login-box button { width: 100%; padding: 11px; background: var(--purple); color: white; border: none; border-radius: var(--radius-sm); font-size: 15px; font-weight: 500; cursor: pointer; }
+  .login-error { font-size: 12px; color: var(--red); margin-top: 8px; display: none; }
 
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      font-size: 15px;
-      line-height: 1.5;
-      min-height: 100vh;
-    }
+  #dashboard { display: none; }
+  .topbar { background: var(--card); border-bottom: 1px solid var(--border); padding: 0 1.25rem; height: 52px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+  .topbar h1 { font-size: 15px; font-weight: 500; }
+  .topbar-left { display: flex; align-items: center; gap: 10px; }
+  .topbar-right { display: flex; align-items: center; gap: 8px; }
+  .year-pill { background: var(--purple-light); color: var(--purple); border: none; border-radius: 20px; padding: 4px 14px; font-size: 13px; font-weight: 500; cursor: pointer; }
+  .year-pill.active { background: var(--purple); color: white; }
+  .last-update { font-size: 11px; color: var(--text-muted); }
+  .logout-btn { font-size: 12px; color: var(--text-muted); background: none; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 4px 10px; cursor: pointer; }
 
-    /* ---- LOGIN ---- */
-    #login-screen {
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 2rem;
-    }
+  .main { padding: 1.25rem; max-width: 960px; margin: 0 auto; }
+  #loading { text-align: center; padding: 4rem; color: var(--text-muted); font-size: 14px; }
+  #error-msg { text-align: center; padding: 2rem; color: var(--red); font-size: 14px; display: none; }
 
-    .login-card {
-      background: var(--surface);
-      border: 0.5px solid var(--border);
-      border-radius: var(--radius);
-      padding: 2.5rem 2rem;
-      width: 100%;
-      max-width: 360px;
-      text-align: center;
-    }
+  .metrics-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 10px; }
+  @media (max-width: 600px) { .metrics-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .metric-card { background: var(--card); border-radius: var(--radius); padding: 14px 16px; border: 1px solid var(--border); }
+  .metric-label { font-size: 11px; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .metric-value { font-size: 22px; font-weight: 500; line-height: 1; }
+  .metric-delta { font-size: 11px; margin-top: 5px; }
+  .up { color: var(--green); } .down { color: var(--red); } .neutral { color: var(--text-muted); }
 
-    .login-card h1 {
-      font-size: 18px;
-      font-weight: 500;
-      color: var(--text);
-      margin-bottom: 6px;
-    }
+  .card { background: var(--card); border-radius: var(--radius); padding: 1.25rem; border: 1px solid var(--border); }
+  .card-title { font-size: 13px; font-weight: 500; color: var(--text-muted); margin-bottom: 1rem; }
+  .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+  @media (max-width: 640px) { .row-2 { grid-template-columns: 1fr; } }
+  .row-1 { margin-bottom: 10px; }
 
-    .login-card p {
-      font-size: 13px;
-      color: var(--text-muted);
-      margin-bottom: 2rem;
-    }
+  .legend { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-muted); }
+  .legend-dot { width: 9px; height: 9px; border-radius: 2px; flex-shrink: 0; }
 
-    .login-card input[type="password"] {
-      width: 100%;
-      padding: 10px 14px;
-      border: 0.5px solid var(--border);
-      border-radius: var(--radius-sm);
-      font-size: 15px;
-      background: var(--bg);
-      color: var(--text);
-      margin-bottom: 12px;
-      outline: none;
-      transition: border-color 0.15s;
-    }
+  .invest-row { display: flex; justify-content: space-between; align-items: flex-start; padding: 9px 0; border-bottom: 1px solid var(--border); }
+  .invest-row:last-child { border-bottom: none; }
+  .invest-name { font-size: 13px; font-weight: 500; }
+  .invest-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+  .invest-val { font-size: 13px; font-weight: 500; text-align: right; }
+  .invest-ytd { font-size: 11px; text-align: right; margin-top: 2px; }
+  .invest-total-row { border-top: 2px solid var(--border) !important; margin-top: 4px; }
+  .tracker-btn { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--blue); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 5px 10px; margin-top: 12px; cursor: pointer; background: none; text-decoration: none; }
 
-    .login-card input[type="password"]:focus {
-      border-color: var(--purple);
-    }
+  .chart-wrap { position: relative; width: 100%; height: 220px; }
 
-    .login-card button {
-      width: 100%;
-      padding: 10px;
-      background: var(--purple);
-      color: #fff;
-      border: none;
-      border-radius: var(--radius-sm);
-      font-size: 14px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: opacity 0.15s;
-    }
-
-    .login-card button:hover { opacity: 0.88; }
-
-    .login-error {
-      font-size: 12px;
-      color: var(--coral);
-      margin-top: 10px;
-      min-height: 18px;
-    }
-
-    /* ---- DASHBOARD ---- */
-    #dashboard { display: none; }
-
-    .topbar {
-      background: var(--surface);
-      border-bottom: 0.5px solid var(--border);
-      padding: 0 1.5rem;
-      height: 52px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      position: sticky;
-      top: 0;
-      z-index: 10;
-    }
-
-    .topbar-left {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .topbar h1 {
-      font-size: 15px;
-      font-weight: 500;
-      color: var(--text);
-    }
-
-    .year-badge {
-      font-size: 12px;
-      background: var(--purple-light);
-      color: var(--purple);
-      padding: 3px 10px;
-      border-radius: 20px;
-      font-weight: 500;
-    }
-
-    .topbar-right {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    select.year-select {
-      font-size: 13px;
-      color: var(--text-muted);
-      background: var(--bg);
-      border: 0.5px solid var(--border);
-      border-radius: var(--radius-sm);
-      padding: 4px 8px;
-      cursor: pointer;
-      outline: none;
-    }
-
-    .logout-btn {
-      font-size: 12px;
-      color: var(--text-muted);
-      background: none;
-      border: 0.5px solid var(--border);
-      border-radius: var(--radius-sm);
-      padding: 4px 10px;
-      cursor: pointer;
-    }
-
-    .tracker-link-btn {
-      font-size: 12px;
-      color: var(--blue);
-      background: var(--blue-light);
-      border: none;
-      border-radius: var(--radius-sm);
-      padding: 5px 12px;
-      cursor: pointer;
-      text-decoration: none;
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-    }
-
-    .main {
-      max-width: 960px;
-      margin: 0 auto;
-      padding: 1.5rem 1rem 3rem;
-    }
-
-    /* ---- METRIC CARDS ---- */
-    .metrics-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-      gap: 10px;
-      margin-bottom: 1.25rem;
-    }
-
-    .metric {
-      background: var(--surface);
-      border: 0.5px solid var(--border);
-      border-radius: var(--radius);
-      padding: 14px 16px;
-    }
-
-    .metric .m-label {
-      font-size: 11px;
-      color: var(--text-muted);
-      margin-bottom: 6px;
-      text-transform: lowercase;
-    }
-
-    .metric .m-value {
-      font-size: 20px;
-      font-weight: 500;
-      color: var(--text);
-      letter-spacing: -0.5px;
-    }
-
-    .metric .m-delta {
-      font-size: 11px;
-      margin-top: 4px;
-    }
-
-    .m-delta.up { color: var(--teal); }
-    .m-delta.down { color: var(--coral); }
-    .m-delta.neutral { color: var(--text-muted); }
-
-    /* ---- CARDS ---- */
-    .card {
-      background: var(--surface);
-      border: 0.5px solid var(--border);
-      border-radius: var(--radius);
-      padding: 1.25rem;
-      margin-bottom: 12px;
-    }
-
-    .card-title {
-      font-size: 12px;
-      font-weight: 500;
-      color: var(--text-muted);
-      margin-bottom: 1rem;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
-    .row-2 {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      margin-bottom: 12px;
-    }
-
-    @media (max-width: 600px) {
-      .row-2 { grid-template-columns: 1fr; }
-      .metrics-grid { grid-template-columns: repeat(2, 1fr); }
-      .topbar h1 { font-size: 13px; }
-      .m-value { font-size: 18px !important; }
-    }
-
-    /* ---- DONUT ---- */
-    .donut-wrap { position: relative; width: 100%; height: 200px; }
-
-    .legend {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-bottom: 1rem;
-    }
-
-    .legend-item {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      font-size: 11px;
-      color: var(--text-muted);
-    }
-
-    .legend-dot {
-      width: 9px;
-      height: 9px;
-      border-radius: 2px;
-      flex-shrink: 0;
-    }
-
-    /* ---- INVESTMENTS ---- */
-    .invest-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      padding: 9px 0;
-      border-bottom: 0.5px solid var(--border);
-    }
-
-    .invest-row:last-of-type { border-bottom: none; }
-
-    .invest-platform { font-size: 13px; color: var(--text); font-weight: 500; }
-    .invest-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
-    .invest-val { font-size: 13px; font-weight: 500; text-align: right; }
-    .invest-ytd { font-size: 11px; text-align: right; margin-top: 2px; }
-    .invest-total-val { font-size: 16px; font-weight: 500; }
-
-    /* ---- BAR CHART ---- */
-    .bar-wrap { position: relative; width: 100%; height: 230px; }
-
-    /* ---- TABLE ---- */
-    .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 12px;
-    }
-
-    th {
-      text-align: right;
-      padding: 7px 10px;
-      color: var(--text-muted);
-      font-weight: 400;
-      border-bottom: 0.5px solid var(--border);
-      white-space: nowrap;
-    }
-
-    th:first-child { text-align: left; }
-
-    td {
-      text-align: right;
-      padding: 7px 10px;
-      border-bottom: 0.5px solid var(--border);
-      color: var(--text);
-      white-space: nowrap;
-    }
-
-    td:first-child { text-align: left; color: var(--text-muted); }
-
-    tr.current-month td { color: var(--text); font-weight: 500; }
-    tr.current-month td:first-child { color: var(--purple); }
-
-    tfoot td {
-      font-weight: 500;
-      border-bottom: none;
-      border-top: 1px solid var(--border);
-      color: var(--text);
-    }
-
-    tfoot td:first-child { color: var(--text-muted); }
-
-    .zero { color: var(--text-muted) !important; font-weight: 400 !important; }
-
-    /* ---- LAST UPDATE ---- */
-    .last-update {
-      text-align: center;
-      font-size: 11px;
-      color: var(--text-muted);
-      margin-top: 2rem;
-    }
-  </style>
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th { text-align: right; padding: 7px 8px; color: var(--text-muted); font-weight: 400; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  th:first-child { text-align: left; }
+  td { text-align: right; padding: 7px 8px; border-bottom: 1px solid rgba(0,0,0,0.04); white-space: nowrap; color: var(--text-muted); }
+  td:first-child { text-align: left; }
+  tr.cur td { color: var(--text); font-weight: 500; }
+  tr.cur td:first-child { color: var(--purple); }
+  tfoot td { font-weight: 500; border-top: 1px solid var(--border); padding-top: 9px; color: var(--text); }
+  .zero { color: rgba(0,0,0,0.15) !important; font-weight: 400 !important; }
+</style>
 </head>
 <body>
 
-<!-- LOGIN -->
 <div id="login-screen">
-  <div class="login-card">
+  <div class="login-box">
     <h1>economia personale</h1>
     <p>accesso riservato</p>
-    <input type="password" id="pwd-input" placeholder="password" autocomplete="current-password" />
-    <button onclick="checkLogin()">entra</button>
-    <div class="login-error" id="login-error"></div>
+    <input type="password" id="pwd-input" placeholder="password" onkeydown="if(event.key==='Enter')doLogin()">
+    <button onclick="doLogin()">accedi</button>
+    <p class="login-error" id="login-error">password errata</p>
   </div>
 </div>
 
-<!-- DASHBOARD -->
 <div id="dashboard">
   <div class="topbar">
     <div class="topbar-left">
       <h1>economia personale</h1>
-      <span class="year-badge" id="year-badge">2025</span>
+      <button class="year-pill active" onclick="setYear(2025)" id="pill-2025">2025</button>
+      <button class="year-pill" onclick="setYear(2024)" id="pill-2024">2024</button>
     </div>
     <div class="topbar-right">
-      <select class="year-select" id="year-select" onchange="renderYear(this.value)">
-        <option value="2025">2025</option>
-        <option value="2024">2024</option>
-      </select>
-      <a class="tracker-link-btn" href="https://docs.google.com/spreadsheets/d/17tenr4Evd6wvUWSnZY6IAbg_Se5KLn4dkaErq99_fd8" target="_blank">
-        portfolio tracker ↗
-      </a>
-      <button class="logout-btn" onclick="logout()">esci</button>
+      <span class="last-update" id="last-update"></span>
+      <button class="logout-btn" onclick="doLogout()">esci</button>
     </div>
   </div>
 
   <div class="main">
-    <div class="metrics-grid" id="metrics-grid"></div>
-
-    <div class="row-2">
-      <div class="card">
-        <div class="card-title">ripartizione entrate</div>
-        <div class="legend" id="donut-legend"></div>
-        <div class="donut-wrap"><canvas id="donut-chart"></canvas></div>
+    <div id="loading">caricamento dati...</div>
+    <div id="error-msg"></div>
+    <div id="content" style="display:none">
+      <div class="metrics-grid" id="metrics-grid"></div>
+      <div class="row-2">
+        <div class="card">
+          <div class="card-title">ripartizione entrate</div>
+          <div class="legend" id="donut-legend"></div>
+          <div style="position:relative;width:100%;height:200px;"><canvas id="donutChart"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-title">investimenti per piattaforma</div>
+          <div id="invest-table"></div>
+          <a class="tracker-btn" href="https://docs.google.com/spreadsheets/d/17tenr4Evd6wvUWSnZY6IAbg_Se5KLn4dkaErq99_fd8" target="_blank">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 10L10 2M10 2H5M10 2V7" stroke="#378ADD" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            portfolio tracker
+          </a>
+        </div>
       </div>
-      <div class="card">
-        <div class="card-title">investimenti</div>
-        <div id="invest-rows"></div>
+      <div class="row-1">
+        <div class="card">
+          <div class="card-title">andamento mensile</div>
+          <div class="legend" id="bar-legend"></div>
+          <div class="chart-wrap"><canvas id="barChart"></canvas></div>
+        </div>
+      </div>
+      <div class="row-1">
+        <div class="card">
+          <div class="card-title">dettaglio mensile</div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th style="text-align:left">mese</th>
+                <th>stipendio</th><th>airbnb</th><th>consulenze</th>
+                <th>interessi</th><th>altro</th><th>totale</th>
+              </tr></thead>
+              <tbody id="monthly-table"></tbody>
+              <tfoot id="monthly-tfoot"></tfoot>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
-
-    <div class="card">
-      <div class="card-title">andamento mensile</div>
-      <div class="legend" id="bar-legend"></div>
-      <div class="bar-wrap"><canvas id="bar-chart"></canvas></div>
-    </div>
-
-    <div class="card">
-      <div class="card-title">dettaglio mensile</div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>mese</th>
-              <th>stipendio</th>
-              <th>airbnb</th>
-              <th>consulenze</th>
-              <th>interessi</th>
-              <th>altro</th>
-              <th>totale</th>
-            </tr>
-          </thead>
-          <tbody id="table-body"></tbody>
-          <tfoot id="table-foot"></tfoot>
-        </table>
-      </div>
-    </div>
-
-    <div class="last-update" id="last-update"></div>
   </div>
 </div>
 
 <script>
 // ============================================================
-// CONFIG — modifica qui
+// CONFIG
 // ============================================================
-const CONFIG = {
-  // Hash SHA-256 della tua password
-  // Default: "andrea2025" — CAMBIA prima del deploy
-  // Per generare: https://emn178.github.io/online-tools/sha256.html
-  passwordHash: 'b3c4b5c5c6c8c9d9e0e1f2f3a4a5b6b7c8c9d0d1e2e3f4f5a6a7b8b9c0c1d2d3',
+const API_URL = 'https://script.google.com/macros/s/AKfycbxShUWi1OmhILJ1kJxleAylHa8s-Lx6w2EFM2FB_iPKPg85gJCgGhVlQA7oHpu0z24BiA/exec';
+const PWD_HASH = '074c1cbd817a1e4a5754d93409a9a6fb340f457fd933d4602114149c311adea6'; // andrea2025
 
-  portfolioTrackerUrl: 'https://docs.google.com/spreadsheets/d/17tenr4Evd6wvUWSnZY6IAbg_Se5KLn4dkaErq99_fd8',
+const COLORS = { stipendio:'#534AB7', airbnb:'#1D9E75', consulenze:'#EF9F27', interessi:'#378ADD', altro:'#888780' };
+const LABELS = { stipendio:'stipendio', airbnb:'airbnb', consulenze:'consulenze', interessi:'interessi', altro:'altro' };
+const INCOME_KEYS = ['stipendio_eur','airbnb_eur','consulenze_eur','interessi_eur','altro_eur'];
+const LABEL_KEYS  = ['stipendio','airbnb','consulenze','interessi','altro'];
+const MONTHS = ['gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','agosto','settembre','ottobre','novembre','dicembre'];
 
-  // Mese corrente (0-based: 0=gen, 9=ott)
-  currentMonth: new Date().getMonth(),
-  currentYear: new Date().getFullYear(),
-};
+let currentYear = new Date().getFullYear();
+let rawData = null;
+let donutInst = null, barInst = null;
 
-// Fallback: se l'anno corrente non è nei dati, usa il più recente disponibile
-if (!DATA[CONFIG.currentYear]) {
-  CONFIG.currentYear = Math.max(...Object.keys(DATA).map(Number));
+// ============================================================
+// AUTH
+// ============================================================
+async function sha256(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
 }
 
-// ============================================================
-// DATI — sostituisci con fetch dal tuo Sheet pubblicato
-// Struttura: per anno → per mese (0=gen .. 11=dic)
-// ============================================================
-const DATA = {
-  2025: {
-    months: ['gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','agosto','settembre','ottobre','novembre','dicembre'],
-    stipendio:  [2400,2400,2400,2400,2400,2400,2400,2400,2400,2400,0,0],
-    airbnb:     [1200,800,950,1100,750,600,900,1050,780,920,0,0],
-    consulenze: [0,1500,0,800,0,2000,0,0,1200,900,0,0],
-    interessi:  [95,95,95,95,95,95,95,95,95,95,0,0],
-    altro:      [0,0,0,0,0,0,0,0,0,0,0,0],
-    invest: {
-      etoro:   [42300,43100,44200,43800,45100,46200,45800,47100,48200,49300,0,0],
-      revolut: [18700,19100,19400,18900,19700,20100,20400,21000,21500,22100,0,0],
-      fineco:  [31500,31800,32100,31900,32400,32800,33100,33500,34000,34500,0,0],
-    },
-    prevYearTotal: 38200,
-  },
-  2024: {
-    months: ['gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','agosto','settembre','ottobre','novembre','dicembre'],
-    stipendio:  [2200,2200,2200,2200,2200,2200,2200,2200,2200,2200,2200,2200],
-    airbnb:     [900,600,700,800,600,500,700,800,600,700,500,400],
-    consulenze: [0,500,0,300,0,800,0,0,500,400,0,0],
-    interessi:  [60,60,60,60,60,60,60,60,60,60,60,60],
-    altro:      [0,0,200,0,0,0,0,0,0,0,0,0],
-    invest: {
-      etoro:   [38000,38500,39200,39800,40100,40600,41000,41500,42000,42300,42500,43000],
-      revolut: [15000,15500,16000,16500,17000,17200,17500,17800,18000,18300,18500,18700],
-      fineco:  [28000,28500,29000,29500,30000,30200,30500,30800,31000,31200,31400,31500],
-    },
-    prevYearTotal: 32000,
-  }
-};
-
-const COLORS = {
-  stipendio:  '#534AB7',
-  airbnb:     '#1D9E75',
-  consulenze: '#EF9F27',
-  interessi:  '#378ADD',
-  altro:      '#888780',
-};
-
-const LABELS = {
-  stipendio: 'stipendio',
-  airbnb: 'airbnb',
-  consulenze: 'consulenze',
-  interessi: 'interessi',
-  altro: 'altro',
-};
-
-let donutChart = null;
-let barChart = null;
-
-// ============================================================
-// LOGIN
-// ============================================================
-async function sha256(message) {
-  const msgBuffer = new TextEncoder().encode(message);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-async function checkLogin() {
-  const pwd = document.getElementById('pwd-input').value;
-  const hash = await sha256(pwd);
-
-  // Confronto: se hash non configurato, accetta "andrea2025" come default temporaneo
-  const isDefault = CONFIG.passwordHash === 'b3c4b5c5c6c8c9d9e0e1f2f3a4a5b6b7c8c9d0d1e2e3f4f5a6a7b8b9c0c1d2d3';
-  const defaultHash = await sha256('andrea2025');
-
-  const match = isDefault ? (hash === defaultHash) : (hash === CONFIG.passwordHash);
-
-  if (match) {
-    sessionStorage.setItem('fd_auth', '1');
+async function doLogin() {
+  const hash = await sha256(document.getElementById('pwd-input').value);
+  if (hash === PWD_HASH) {
+    sessionStorage.setItem('auth','1');
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('dashboard').style.display = 'block';
-    renderYear(CONFIG.currentYear.toString());
+    loadAndRender();
   } else {
-    document.getElementById('login-error').textContent = 'password errata';
+    document.getElementById('login-error').style.display = 'block';
     document.getElementById('pwd-input').value = '';
-    document.getElementById('pwd-input').focus();
   }
 }
 
-document.getElementById('pwd-input').addEventListener('keydown', e => {
-  if (e.key === 'Enter') checkLogin();
-});
+function doLogout() { sessionStorage.removeItem('auth'); location.reload(); }
 
-function logout() {
-  sessionStorage.removeItem('fd_auth');
-  document.getElementById('dashboard').style.display = 'none';
-  document.getElementById('login-screen').style.display = 'flex';
-  document.getElementById('pwd-input').value = '';
+window.onload = () => {
+  if (sessionStorage.getItem('auth') === '1') {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('dashboard').style.display = 'block';
+    loadAndRender();
+  }
+};
+
+// ============================================================
+// FETCH
+// ============================================================
+async function loadAndRender() {
+  document.getElementById('loading').style.display = 'block';
+  document.getElementById('content').style.display = 'none';
+  document.getElementById('error-msg').style.display = 'none';
+  try {
+    const res = await fetch(API_URL);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    rawData = await res.json();
+    document.getElementById('last-update').textContent = 'aggiornato: ' + new Date().toLocaleDateString('it-IT');
+    renderDashboard(currentYear);
+  } catch(e) {
+    document.getElementById('loading').style.display = 'none';
+    const em = document.getElementById('error-msg');
+    em.style.display = 'block';
+    em.textContent = 'Errore caricamento dati: ' + e.message + '. Riprova tra qualche secondo.';
+  }
 }
 
-// Ripristina sessione se già loggato
-if (sessionStorage.getItem('fd_auth') === '1') {
-  document.getElementById('login-screen').style.display = 'none';
-  document.getElementById('dashboard').style.display = 'block';
-  setTimeout(() => renderYear(CONFIG.currentYear.toString()), 0);
+function setYear(y) {
+  currentYear = y;
+  document.querySelectorAll('.year-pill').forEach(p => p.classList.remove('active'));
+  document.getElementById('pill-' + y).classList.add('active');
+  if (rawData) renderDashboard(y);
 }
 
 // ============================================================
 // RENDER
 // ============================================================
-function fmt(n) {
-  if (!n || n === 0) return '<span class="zero">—</span>';
-  return '€' + Math.round(n).toLocaleString('it-IT');
-}
+function renderDashboard(year) {
+  const income = (rawData.income || []).filter(r => Number(r.anno) === Number(year));
+  const invest  = (rawData.investments || []).filter(r => Number(r.anno) === Number(year));
+  const prevIncome = (rawData.income || []).filter(r => Number(r.anno) === Number(year) - 1);
 
-function fmtPlain(n) {
-  return '€' + Math.round(n).toLocaleString('it-IT');
-}
-
-function fmtK(n) {
-  if (n >= 1000) return '€' + (n/1000).toFixed(1) + 'k';
-  return '€' + Math.round(n);
-}
-
-function renderYear(year) {
-  const y = parseInt(year);
-  const d = DATA[y];
-  if (!d) return;
-
-  document.getElementById('year-badge').textContent = year;
-  document.getElementById('year-select').value = year;
-
-  const isCurrentYear = y === CONFIG.currentYear;
-  const lastMonth = isCurrentYear ? CONFIG.currentMonth : 11;
-
-  // Calcola totali YTD per categoria
-  const keys = ['stipendio','airbnb','consulenze','interessi','altro'];
   const ytd = {};
-  keys.forEach(k => {
-    ytd[k] = d[k].slice(0, lastMonth + 1).reduce((a,b) => a+b, 0);
-  });
-  ytd.total = keys.reduce((s,k) => s + ytd[k], 0);
+  LABEL_KEYS.forEach(k => { ytd[k] = sum(income, k + '_eur'); });
+  ytd.totale = LABEL_KEYS.reduce((s,k) => s + ytd[k], 0);
 
-  // Invest ultimo mese disponibile
-  const investMonth = isCurrentYear ? CONFIG.currentMonth : 11;
-  const investTotale = (d.invest.etoro[investMonth] || 0) +
-                       (d.invest.revolut[investMonth] || 0) +
-                       (d.invest.fineco[investMonth] || 0);
-  const investPrev = (d.invest.etoro[0] || 0) +
-                     (d.invest.revolut[0] || 0) +
-                     (d.invest.fineco[0] || 0);
-  const investDelta = investTotale - investPrev;
-  const investPct = investPrev > 0 ? ((investDelta / investPrev) * 100).toFixed(1) : 0;
+  const prevTotal = sumKeys(prevIncome, INCOME_KEYS);
+  const lastInvest = invest.length ? invest[invest.length - 1] : null;
+  const portfolio = lastInvest ? (Number(lastInvest.totale_eur) || 0) : 0;
+  const investDelta = sum(invest, 'delta_eur');
+  const investPct = portfolio > 0 && investDelta ? (investDelta / (portfolio - investDelta) * 100) : null;
 
-  // Delta vs anno precedente
-  const prevData = DATA[y - 1];
-  const prevTotal = prevData ? ['stipendio','airbnb','consulenze','interessi','altro']
-    .reduce((s,k) => s + prevData[k].reduce((a,b)=>a+b,0), 0) : null;
+  renderMetrics(ytd, prevTotal, portfolio, investDelta, investPct);
+  renderDonut(ytd);
+  renderInvestments(invest, lastInvest, investDelta);
+  renderBar(income);
+  renderTable(income, year);
 
-  // Metric cards
-  const metrics = [
-    { label: 'entrate YTD', value: fmtK(ytd.total), delta: prevTotal ? ((ytd.total - prevTotal) / prevTotal * 100).toFixed(0) + '% vs ' + (y-1) : null, dir: ytd.total > (prevTotal||0) ? 'up' : 'down' },
-    { label: 'stipendio YTD', value: fmtK(ytd.stipendio), delta: null, dir: 'neutral' },
-    { label: 'portafoglio', value: fmtK(investTotale), delta: (investDelta >= 0 ? '+' : '') + fmtK(investDelta) + ' YTD', dir: investDelta >= 0 ? 'up' : 'down' },
-    { label: 'airbnb YTD', value: fmtK(ytd.airbnb), delta: null, dir: 'neutral' },
-    { label: 'consulenze YTD', value: fmtK(ytd.consulenze), delta: null, dir: 'neutral' },
-    { label: 'interessi YTD', value: fmtK(ytd.interessi), delta: null, dir: 'neutral' },
-  ];
-
-  const mg = document.getElementById('metrics-grid');
-  mg.innerHTML = metrics.map(m => `
-    <div class="metric">
-      <div class="m-label">${m.label}</div>
-      <div class="m-value">${m.value}</div>
-      ${m.delta ? `<div class="m-delta ${m.dir}">${m.dir === 'up' ? '+' : ''}${m.delta}</div>` : '<div class="m-delta neutral"> </div>'}
-    </div>
-  `).join('');
-
-  // Donut
-  renderDonut(ytd, keys);
-
-  // Investments
-  const ir = document.getElementById('invest-rows');
-  const platforms = [
-    { key: 'etoro', label: 'eToro', sub: 'stocks + ETF' },
-    { key: 'revolut', label: 'Revolut', sub: 'crypto + metalli' },
-    { key: 'fineco', label: 'Fineco', sub: 'certificates + ETF' },
-  ];
-  ir.innerHTML = platforms.map(p => {
-    const val = d.invest[p.key][investMonth] || 0;
-    const start = d.invest[p.key][0] || 0;
-    const delta = val - start;
-    return `
-      <div class="invest-row">
-        <div>
-          <div class="invest-platform">${p.label}</div>
-          <div class="invest-sub">${p.sub}</div>
-        </div>
-        <div>
-          <div class="invest-val">${fmtPlain(val)}</div>
-          <div class="invest-ytd ${delta >= 0 ? 'up m-delta' : 'down m-delta'}">${delta >= 0 ? '+' : ''}${fmtPlain(delta)} YTD</div>
-        </div>
-      </div>
-    `;
-  }).join('') + `
-    <div class="invest-row" style="margin-top:4px;">
-      <div>
-        <div class="invest-platform" style="font-size:14px;">totale</div>
-        <div class="invest-sub">valore attuale</div>
-      </div>
-      <div>
-        <div class="invest-val invest-total-val">${fmtPlain(investTotale)}</div>
-        <div class="invest-ytd ${investDelta >= 0 ? 'up m-delta' : 'down m-delta'}">${investPct}% YTD</div>
-      </div>
-    </div>
-  `;
-
-  // Bar chart
-  renderBar(d, lastMonth);
-
-  // Table
-  renderTable(d, lastMonth, isCurrentYear);
-
-  // Last update
-  document.getElementById('last-update').textContent =
-    'dati aggiornati al ' + d.months[lastMonth] + ' ' + y;
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('content').style.display = 'block';
 }
 
-function renderDonut(ytd, keys) {
-  const legend = document.getElementById('donut-legend');
-  const total = keys.reduce((s,k) => s + ytd[k], 0);
+// METRICS
+function renderMetrics(ytd, prevTotal, portfolio, investDelta, investPct) {
+  const totDelta = prevTotal > 0 ? ((ytd.totale - prevTotal) / prevTotal * 100) : null;
+  const items = [
+    { label:'entrate totali YTD', val: fmt(ytd.totale), delta: totDelta, suf:'%' },
+    { label:'stipendio YTD',      val: fmt(ytd.stipendio), delta: null },
+    { label:'portafoglio attuale', val: fmt(portfolio), delta: investPct, suf:'% YTD' },
+    { label:'airbnb YTD',         val: fmt(ytd.airbnb), delta: null },
+    { label:'consulenze YTD',     val: fmt(ytd.consulenze), delta: null },
+    { label:'interessi YTD',      val: fmt(ytd.interessi), delta: null },
+  ];
+  document.getElementById('metrics-grid').innerHTML = items.map(m => `
+    <div class="metric-card">
+      <div class="metric-label">${m.label}</div>
+      <div class="metric-value">${m.val}</div>
+      <div class="metric-delta ${m.delta === null ? 'neutral' : m.delta >= 0 ? 'up' : 'down'}">
+        ${m.delta === null ? '—' : (m.delta >= 0 ? '↑' : '↓') + ' ' + Math.abs(m.delta).toFixed(1) + (m.suf||'')}
+      </div>
+    </div>`).join('');
+}
 
-  legend.innerHTML = keys.filter(k => ytd[k] > 0).map(k => {
-    const pct = total > 0 ? Math.round(ytd[k] / total * 100) : 0;
+// DONUT
+function renderDonut(ytd) {
+  const vals = LABEL_KEYS.map(k => ytd[k]);
+  const total = vals.reduce((a,b) => a+b, 0);
+  document.getElementById('donut-legend').innerHTML = LABEL_KEYS.map((k,i) => {
+    const pct = total > 0 ? Math.round(vals[i]/total*100) : 0;
     return `<span class="legend-item"><span class="legend-dot" style="background:${COLORS[k]}"></span>${LABELS[k]} ${pct}%</span>`;
   }).join('');
-
-  if (donutChart) donutChart.destroy();
-  const ctx = document.getElementById('donut-chart').getContext('2d');
-  donutChart = new Chart(ctx, {
+  if (donutInst) donutInst.destroy();
+  donutInst = new Chart(document.getElementById('donutChart').getContext('2d'), {
     type: 'doughnut',
-    data: {
-      labels: keys.map(k => LABELS[k]),
-      datasets: [{
-        data: keys.map(k => ytd[k]),
-        backgroundColor: keys.map(k => COLORS[k]),
-        borderWidth: 0,
-        hoverOffset: 4,
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      cutout: '68%',
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          callbacks: {
-            label: ctx => ` ${fmtPlain(ctx.parsed)}`
-          }
-        }
-      }
-    }
+    data: { labels: LABEL_KEYS.map(k=>LABELS[k]), datasets: [{ data: vals, backgroundColor: LABEL_KEYS.map(k=>COLORS[k]), borderWidth: 0, hoverOffset: 4 }] },
+    options: { responsive:true, maintainAspectRatio:false, cutout:'65%', plugins: { legend:{display:false}, tooltip:{callbacks:{label:c=>`  €${Math.round(c.parsed).toLocaleString('it-IT')}`}} } }
   });
 }
 
-function renderBar(d, lastMonth) {
-  const keys = ['stipendio','airbnb','consulenze','interessi','altro'];
-  const legend = document.getElementById('bar-legend');
-  legend.innerHTML = keys.map(k => `
-    <span class="legend-item">
-      <span class="legend-dot" style="background:${COLORS[k]}"></span>${LABELS[k]}
-    </span>
-  `).join('');
+// INVESTMENTS
+function renderInvestments(invest, last, totalDelta) {
+  if (!last) { document.getElementById('invest-table').innerHTML = '<p style="font-size:13px;color:var(--text-muted)">inserisci dati nel tab investments</p>'; return; }
+  const platforms = [
+    { name:'eToro',   sub:'stocks + ETF',       key:'etoro_eur' },
+    { name:'Revolut', sub:'crypto + metalli',    key:'revolut_eur' },
+    { name:'Fineco',  sub:'certificates + ETF',  key:'fineco_eur' },
+  ];
+  const firstInvest = invest.length ? invest[0] : null;
+  document.getElementById('invest-table').innerHTML =
+    platforms.map(p => {
+      const val = Number(last[p.key]) || 0;
+      const start = firstInvest ? (Number(firstInvest[p.key]) || 0) : 0;
+      const delta = val - start;
+      return `<div class="invest-row">
+        <div><div class="invest-name">${p.name}</div><div class="invest-sub">${p.sub}</div></div>
+        <div><div class="invest-val">${fmt(val)}</div>
+        <div class="invest-ytd ${delta >= 0 ? 'up' : 'down'}">${delta >= 0 ? '+' : ''}${fmt(delta)} YTD</div></div>
+      </div>`;
+    }).join('') +
+    `<div class="invest-row invest-total-row">
+      <div><div class="invest-name">totale portafoglio</div></div>
+      <div><div class="invest-val" style="font-size:15px">${fmt(Number(last.totale_eur))}</div>
+      <div class="invest-ytd ${totalDelta >= 0 ? 'up' : 'down'}">${totalDelta >= 0 ? '+' : ''}${fmt(totalDelta)} YTD</div></div>
+    </div>`;
+}
 
-  if (barChart) barChart.destroy();
-  const ctx = document.getElementById('bar-chart').getContext('2d');
-
-  barChart = new Chart(ctx, {
+// BAR CHART
+function renderBar(income) {
+  document.getElementById('bar-legend').innerHTML = LABEL_KEYS.map(k =>
+    `<span class="legend-item"><span class="legend-dot" style="background:${COLORS[k]}"></span>${LABELS[k]}</span>`).join('');
+  const monthly = {};
+  LABEL_KEYS.forEach(k => { monthly[k] = new Array(12).fill(0); });
+  income.forEach(row => {
+    const mi = (Number(row.mese_num) || 0) - 1;
+    if (mi >= 0 && mi < 12) LABEL_KEYS.forEach(k => { monthly[k][mi] += Number(row[k+'_eur']) || 0; });
+  });
+  if (barInst) barInst.destroy();
+  barInst = new Chart(document.getElementById('barChart').getContext('2d'), {
     type: 'bar',
     data: {
-      labels: d.months.map(m => m.substring(0,3)),
-      datasets: keys.map(k => ({
-        label: LABELS[k],
-        data: d[k],
-        backgroundColor: d[k].map((v,i) => i <= lastMonth ? COLORS[k] : COLORS[k] + '33'),
-        borderRadius: 2,
-        borderSkipped: false,
-      }))
+      labels: ['gen','feb','mar','apr','mag','giu','lug','ago','set','ott','nov','dic'],
+      datasets: LABEL_KEYS.map(k => ({ label:LABELS[k], data:monthly[k], backgroundColor:COLORS[k], borderRadius:2, borderSkipped:false }))
     },
     options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          callbacks: {
-            label: ctx => ` ${ctx.dataset.label}: ${fmtPlain(ctx.parsed.y)}`
-          }
-        }
-      },
+      responsive:true, maintainAspectRatio:false,
+      plugins: { legend:{display:false}, tooltip:{callbacks:{label:c=>` ${c.dataset.label}: €${Math.round(c.parsed.y).toLocaleString('it-IT')}`}} },
       scales: {
-        x: {
-          stacked: true,
-          ticks: { font: { size: 11 }, color: '#888780', autoSkip: false, maxRotation: 0 },
-          grid: { display: false },
-        },
-        y: {
-          stacked: true,
-          ticks: {
-            font: { size: 11 },
-            color: '#888780',
-            callback: v => v >= 1000 ? '€' + (v/1000).toFixed(0) + 'k' : '€' + v,
-          },
-          grid: { color: 'rgba(136,135,128,0.1)' },
-        }
+        x: { stacked:true, ticks:{font:{size:11},color:'#888780',autoSkip:false}, grid:{display:false} },
+        y: { stacked:true, ticks:{font:{size:11},color:'#888780',callback:v=>'€'+(v>=1000?(v/1000).toFixed(0)+'k':v)}, grid:{color:'rgba(0,0,0,0.05)'} }
       }
     }
   });
 }
 
-function renderTable(d, lastMonth, isCurrentYear) {
-  const keys = ['stipendio','airbnb','consulenze','interessi','altro'];
-  const tbody = document.getElementById('table-body');
-  const tfoot = document.getElementById('table-foot');
+// TABLE
+function renderTable(income, year) {
+  const curMonth = new Date().getMonth();
+  const curYear = new Date().getFullYear();
+  const colTotals = new Array(5).fill(0);
+  const rows = MONTHS.map((mese, i) => {
+    const row = income.find(r => Number(r.mese_num) - 1 === i);
+    const vals = INCOME_KEYS.map(k => row ? (Number(row[k]) || 0) : 0);
+    vals.forEach((v,j) => colTotals[j] += v);
+    const total = vals.reduce((a,b) => a+b, 0);
+    const isCur = (i === curMonth) && (Number(year) === curYear) && row;
+    return `<tr class="${isCur ? 'cur' : ''}">
+      <td>${mese}</td>
+      ${vals.map(v => `<td class="${v===0?'zero':''}">${v===0?'—':fmtS(v)}</td>`).join('')}
+      <td>${total>0?'<strong>'+fmtS(total)+'</strong>':'—'}</td>
+    </tr>`;
+  });
+  const grand = colTotals.reduce((a,b)=>a+b,0);
+  document.getElementById('monthly-table').innerHTML = rows.join('');
+  document.getElementById('monthly-tfoot').innerHTML = `<tr>
+    <td>totale</td>${colTotals.map(v=>`<td>${fmtS(v)}</td>`).join('')}<td><strong>${fmtS(grand)}</strong></td>
+  </tr>`;
+}
 
-  tbody.innerHTML = d.months.map((m, i) => {
-    const total = keys.reduce((s,k) => s + d[k][i], 0);
-    const isCurrent = isCurrentYear && i === CONFIG.currentMonth;
-    const isFuture = isCurrentYear && i > CONFIG.currentMonth;
-    return `
-      <tr class="${isCurrent ? 'current-month' : ''}">
-        <td>${m}${isCurrent ? ' ●' : ''}</td>
-        ${keys.map(k => `<td>${isFuture ? '<span class="zero">—</span>' : fmt(d[k][i])}</td>`).join('')}
-        <td>${isFuture ? '<span class="zero">—</span>' : (total > 0 ? '<strong>' + fmtPlain(total) + '</strong>' : '<span class="zero">—</span>')}</td>
-      </tr>
-    `;
-  }).join('');
-
-  const totals = keys.map(k => d[k].slice(0, lastMonth + 1).reduce((a,b) => a+b, 0));
-  const grandTotal = totals.reduce((a,b) => a+b, 0);
-  tfoot.innerHTML = `
-    <tr>
-      <td>totale</td>
-      ${totals.map(t => `<td>${fmtPlain(t)}</td>`).join('')}
-      <td><strong>${fmtPlain(grandTotal)}</strong></td>
-    </tr>
-  `;
+// UTILS
+function sum(arr, key) { return arr.reduce((s,r) => s + (Number(r[key])||0), 0); }
+function sumKeys(arr, keys) { return keys.reduce((s,k) => s + sum(arr,k), 0); }
+function fmt(n) { return '€' + Math.round(n||0).toLocaleString('it-IT'); }
+function fmtS(n) {
+  if (!n) return '—';
+  return n >= 1000 ? '€'+(n/1000).toFixed(1)+'k' : '€'+Math.round(n);
 }
 </script>
 </body>
