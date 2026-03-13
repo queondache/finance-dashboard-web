@@ -8,17 +8,16 @@
 <style>
   :root {
     --purple: #534AB7; --purple-light: #EEEDFE;
-    --blue: #378ADD; --green: #1D9E75;
-    --amber: #EF9F27; --gray: #888780;
-    --red: #D85A30; --bg: #f8f7f4;
-    --card: #ffffff; --text: #1a1a1a;
+    --blue: #378ADD; --green: #1D9E75; --green-dark: #0F6E56;
+    --amber: #EF9F27; --gray: #888780; --red: #D85A30;
+    --bg: #f8f7f4; --card: #ffffff; --text: #1a1a1a;
     --text-muted: #6b6a66; --border: rgba(0,0,0,0.08);
     --radius: 12px; --radius-sm: 8px;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
 
-  #login-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--bg); }
+  #login-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; }
   .login-box { background: var(--card); border-radius: var(--radius); padding: 2.5rem 2rem; width: 100%; max-width: 340px; border: 1px solid var(--border); }
   .login-box h1 { font-size: 18px; font-weight: 500; margin-bottom: 6px; }
   .login-box p { font-size: 13px; color: var(--text-muted); margin-bottom: 1.5rem; }
@@ -51,8 +50,10 @@
 
   .card { background: var(--card); border-radius: var(--radius); padding: 1.25rem; border: 1px solid var(--border); }
   .card-title { font-size: 13px; font-weight: 500; color: var(--text-muted); margin-bottom: 1rem; }
+  .section-label { font-size: 11px; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin: 1.25rem 0 0.6rem; }
   .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
-  @media (max-width: 640px) { .row-2 { grid-template-columns: 1fr; } }
+  .row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+  @media (max-width: 640px) { .row-2, .row-3 { grid-template-columns: 1fr; } }
   .row-1 { margin-bottom: 10px; }
 
   .legend { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
@@ -65,10 +66,19 @@
   .invest-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
   .invest-val { font-size: 13px; font-weight: 500; text-align: right; }
   .invest-ytd { font-size: 11px; text-align: right; margin-top: 2px; }
-  .invest-total-row { border-top: 2px solid var(--border) !important; margin-top: 4px; }
+  .invest-total-row { border-top: 2px solid var(--border) !important; margin-top: 4px; padding-top: 10px !important; }
   .tracker-btn { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--blue); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 5px 10px; margin-top: 12px; cursor: pointer; background: none; text-decoration: none; }
 
-  .chart-wrap { position: relative; width: 100%; height: 220px; }
+  .liq-accounts { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin-bottom: 1rem; }
+  .liq-account { background: var(--bg); border-radius: var(--radius-sm); padding: 10px 12px; border: 1px solid var(--border); }
+  .liq-account-name { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px; }
+  .liq-account-val { font-size: 16px; font-weight: 500; }
+  .liq-total-bar { display: flex; justify-content: space-between; align-items: baseline; padding: 10px 0 0; border-top: 1px solid var(--border); margin-top: 4px; }
+  .liq-total-label { font-size: 13px; color: var(--text-muted); }
+  .liq-total-val { font-size: 20px; font-weight: 500; }
+
+  .chart-wrap { position: relative; width: 100%; height: 200px; }
+  .chart-wrap-sm { position: relative; width: 100%; height: 160px; }
 
   .table-wrap { overflow-x: auto; }
   table { width: 100%; border-collapse: collapse; font-size: 12px; }
@@ -111,10 +121,14 @@
     <div id="loading">caricamento dati...</div>
     <div id="error-msg"></div>
     <div id="content" style="display:none">
+
+      <!-- ENTRATE -->
+      <div class="section-label">entrate</div>
       <div class="metrics-grid" id="metrics-grid"></div>
+
       <div class="row-2">
         <div class="card">
-          <div class="card-title">ripartizione entrate</div>
+          <div class="card-title">ripartizione entrate + investimenti</div>
           <div class="legend" id="donut-legend"></div>
           <div style="position:relative;width:100%;height:200px;"><canvas id="donutChart"></canvas></div>
         </div>
@@ -127,13 +141,15 @@
           </a>
         </div>
       </div>
+
       <div class="row-1">
         <div class="card">
-          <div class="card-title">andamento mensile</div>
+          <div class="card-title">andamento mensile entrate</div>
           <div class="legend" id="bar-legend"></div>
           <div class="chart-wrap"><canvas id="barChart"></canvas></div>
         </div>
       </div>
+
       <div class="row-1">
         <div class="card">
           <div class="card-title">dettaglio mensile</div>
@@ -142,7 +158,7 @@
               <thead><tr>
                 <th style="text-align:left">mese</th>
                 <th>stipendio</th><th>airbnb</th><th>consulenze</th>
-                <th>interessi</th><th>altro</th><th>totale</th>
+                <th>interessi</th><th>invest.</th><th>altro</th><th>totale</th>
               </tr></thead>
               <tbody id="monthly-table"></tbody>
               <tfoot id="monthly-tfoot"></tfoot>
@@ -150,35 +166,59 @@
           </div>
         </div>
       </div>
+
+      <!-- LIQUIDITÀ -->
+      <div class="section-label">liquidità</div>
+
+      <div class="row-1">
+        <div class="card">
+          <div class="card-title">saldi conti correnti — mese corrente</div>
+          <div class="liq-accounts" id="liq-accounts"></div>
+          <div class="liq-total-bar">
+            <span class="liq-total-label">totale liquidità</span>
+            <div style="text-align:right">
+              <span class="liq-total-val" id="liq-total">—</span>
+              <div class="metric-delta" id="liq-delta" style="justify-content:flex-end;margin-top:3px;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row-2">
+        <div class="card">
+          <div class="card-title">trend liquidità totale</div>
+          <div class="chart-wrap-sm"><canvas id="liqChart"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-title">variazione mensile</div>
+          <div class="chart-wrap-sm"><canvas id="liqDeltaChart"></canvas></div>
+        </div>
+      </div>
+
     </div>
   </div>
 </div>
 
 <script>
-// ============================================================
-// CONFIG
-// ============================================================
 const API_URL = 'https://script.google.com/macros/s/AKfycbxShUWi1OmhILJ1kJxleAylHa8s-Lx6w2EFM2FB_iPKPg85gJCgGhVlQA7oHpu0z24BiA/exec';
-const PWD_HASH = '074c1cbd817a1e4a5754d93409a9a6fb340f457fd933d4602114149c311adea6'; // andrea2025
+const PWD_HASH = '074c1cbd817a1e4a5754d93409a9a6fb340f457fd933d4602114149c311adea6';
 
-const COLORS = { stipendio:'#534AB7', airbnb:'#1D9E75', consulenze:'#EF9F27', interessi:'#378ADD', altro:'#888780' };
-const LABELS = { stipendio:'stipendio', airbnb:'airbnb', consulenze:'consulenze', interessi:'interessi', altro:'altro' };
+const COLORS = { stipendio:'#534AB7', airbnb:'#1D9E75', consulenze:'#EF9F27', interessi:'#378ADD', invest:'#0F6E56', altro:'#888780' };
+const LABELS = { stipendio:'stipendio', airbnb:'airbnb', consulenze:'consulenze', interessi:'interessi', invest:'investimenti', altro:'altro' };
 const INCOME_KEYS = ['stipendio_eur','airbnb_eur','consulenze_eur','interessi_eur','altro_eur'];
-const LABEL_KEYS  = ['stipendio','airbnb','consulenze','interessi','altro'];
+const LABEL_KEYS  = ['stipendio','airbnb','consulenze','interessi','invest','altro'];
 const MONTHS = ['gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','agosto','settembre','ottobre','novembre','dicembre'];
+const LIQ_ACCOUNTS = ['ing','revolut','vivid','bnl','fineco'];
 
 let currentYear = new Date().getFullYear();
 let rawData = null;
-let donutInst = null, barInst = null;
+let charts = {};
 
-// ============================================================
-// AUTH
-// ============================================================
+// ---- AUTH ----
 async function sha256(str) {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
   return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
 }
-
 async function doLogin() {
   const hash = await sha256(document.getElementById('pwd-input').value);
   if (hash === PWD_HASH) {
@@ -191,9 +231,7 @@ async function doLogin() {
     document.getElementById('pwd-input').value = '';
   }
 }
-
 function doLogout() { sessionStorage.removeItem('auth'); location.reload(); }
-
 window.onload = () => {
   if (sessionStorage.getItem('auth') === '1') {
     document.getElementById('login-screen').style.display = 'none';
@@ -202,9 +240,7 @@ window.onload = () => {
   }
 };
 
-// ============================================================
-// FETCH
-// ============================================================
+// ---- FETCH ----
 async function loadAndRender() {
   document.getElementById('loading').style.display = 'block';
   document.getElementById('content').style.display = 'none';
@@ -219,10 +255,9 @@ async function loadAndRender() {
     document.getElementById('loading').style.display = 'none';
     const em = document.getElementById('error-msg');
     em.style.display = 'block';
-    em.textContent = 'Errore caricamento dati: ' + e.message + '. Riprova tra qualche secondo.';
+    em.textContent = 'Errore caricamento: ' + e.message;
   }
 }
-
 function setYear(y) {
   currentYear = y;
   document.querySelectorAll('.year-pill').forEach(p => p.classList.remove('active'));
@@ -230,138 +265,157 @@ function setYear(y) {
   if (rawData) renderDashboard(y);
 }
 
-// ============================================================
-// RENDER
-// ============================================================
+// ---- RENDER ----
 function renderDashboard(year) {
   const income = (rawData.income || []).filter(r => Number(r.anno) === Number(year));
   const invest  = (rawData.investments || []).filter(r => Number(r.anno) === Number(year));
+  const liq     = (rawData.liquidity || []).filter(r => Number(r.anno) === Number(year));
   const prevIncome = (rawData.income || []).filter(r => Number(r.anno) === Number(year) - 1);
 
   const ytd = {};
-  LABEL_KEYS.forEach(k => { ytd[k] = sum(income, k + '_eur'); });
-  ytd.totale = LABEL_KEYS.reduce((s,k) => s + ytd[k], 0);
+  ['stipendio','airbnb','consulenze','interessi','altro'].forEach(k => { ytd[k] = sum(income, k + '_eur'); });
+
+  const lastInvest = invest.length ? invest[invest.length - 1] : null;
+  ytd.invest = lastInvest ? (Number(lastInvest.delta_eur) || 0) : 0;
+  ytd.totale = ['stipendio','airbnb','consulenze','interessi','invest','altro'].reduce((s,k) => s + (ytd[k]||0), 0);
 
   const prevTotal = sumKeys(prevIncome, INCOME_KEYS);
-  const lastInvest = invest.length ? invest[invest.length - 1] : null;
   const portfolio = lastInvest ? (Number(lastInvest.totale_eur) || 0) : 0;
-  const investDelta = sum(invest, 'delta_eur');
-  const investPct = portfolio > 0 && investDelta ? (investDelta / (portfolio - investDelta) * 100) : null;
+  const investYTD = sum(invest, 'delta_eur');
+  const investPct = (portfolio - investYTD) > 0 ? (investYTD / (portfolio - investYTD) * 100) : null;
 
-  renderMetrics(ytd, prevTotal, portfolio, investDelta, investPct);
+  renderMetrics(ytd, prevTotal, portfolio, investYTD, investPct);
   renderDonut(ytd);
-  renderInvestments(invest, lastInvest, investDelta);
-  renderBar(income);
-  renderTable(income, year);
+  renderInvestments(invest, lastInvest, investYTD);
+  renderBar(income, invest);
+  renderTable(income, invest, year);
+  renderLiquidity(liq);
 
   document.getElementById('loading').style.display = 'none';
   document.getElementById('content').style.display = 'block';
 }
 
 // METRICS
-function renderMetrics(ytd, prevTotal, portfolio, investDelta, investPct) {
+function renderMetrics(ytd, prevTotal, portfolio, investYTD, investPct) {
   const totDelta = prevTotal > 0 ? ((ytd.totale - prevTotal) / prevTotal * 100) : null;
   const items = [
-    { label:'entrate totali YTD', val: fmt(ytd.totale), delta: totDelta, suf:'%' },
-    { label:'stipendio YTD',      val: fmt(ytd.stipendio), delta: null },
-    { label:'portafoglio attuale', val: fmt(portfolio), delta: investPct, suf:'% YTD' },
-    { label:'airbnb YTD',         val: fmt(ytd.airbnb), delta: null },
-    { label:'consulenze YTD',     val: fmt(ytd.consulenze), delta: null },
-    { label:'interessi YTD',      val: fmt(ytd.interessi), delta: null },
+    { label:'entrate totali YTD',  val: fmtM(ytd.totale),     delta: totDelta,  suf:'%' },
+    { label:'stipendio YTD',       val: fmtM(ytd.stipendio),  delta: null },
+    { label:'portafoglio attuale', val: fmtM(portfolio),       delta: investPct, suf:'% YTD' },
+    { label:'airbnb YTD',          val: fmtM(ytd.airbnb),     delta: null },
+    { label:'consulenze YTD',      val: fmtM(ytd.consulenze), delta: null },
+    { label:'interessi YTD',       val: fmtM(ytd.interessi),  delta: null },
   ];
   document.getElementById('metrics-grid').innerHTML = items.map(m => `
     <div class="metric-card">
       <div class="metric-label">${m.label}</div>
       <div class="metric-value">${m.val}</div>
-      <div class="metric-delta ${m.delta === null ? 'neutral' : m.delta >= 0 ? 'up' : 'down'}">
-        ${m.delta === null ? '—' : (m.delta >= 0 ? '↑' : '↓') + ' ' + Math.abs(m.delta).toFixed(1) + (m.suf||'')}
+      <div class="metric-delta ${m.delta===null?'neutral':m.delta>=0?'up':'down'}">
+        ${m.delta===null ? '—' : (m.delta>=0?'↑':'↓')+' '+Math.abs(m.delta).toFixed(1)+(m.suf||'')}
       </div>
     </div>`).join('');
 }
 
 // DONUT
 function renderDonut(ytd) {
-  const vals = LABEL_KEYS.map(k => ytd[k]);
+  const vals = LABEL_KEYS.map(k => Math.max(0, ytd[k]||0));
   const total = vals.reduce((a,b) => a+b, 0);
   document.getElementById('donut-legend').innerHTML = LABEL_KEYS.map((k,i) => {
     const pct = total > 0 ? Math.round(vals[i]/total*100) : 0;
     return `<span class="legend-item"><span class="legend-dot" style="background:${COLORS[k]}"></span>${LABELS[k]} ${pct}%</span>`;
   }).join('');
-  if (donutInst) donutInst.destroy();
-  donutInst = new Chart(document.getElementById('donutChart').getContext('2d'), {
+  if (charts.donut) charts.donut.destroy();
+  charts.donut = new Chart(document.getElementById('donutChart').getContext('2d'), {
     type: 'doughnut',
     data: { labels: LABEL_KEYS.map(k=>LABELS[k]), datasets: [{ data: vals, backgroundColor: LABEL_KEYS.map(k=>COLORS[k]), borderWidth: 0, hoverOffset: 4 }] },
-    options: { responsive:true, maintainAspectRatio:false, cutout:'65%', plugins: { legend:{display:false}, tooltip:{callbacks:{label:c=>`  €${Math.round(c.parsed).toLocaleString('it-IT')}`}} } }
+    options: { responsive:true, maintainAspectRatio:false, cutout:'65%', plugins:{ legend:{display:false}, tooltip:{callbacks:{label:c=>` €${fmtM(c.parsed)}`}} } }
   });
 }
 
 // INVESTMENTS
 function renderInvestments(invest, last, totalDelta) {
   if (!last) { document.getElementById('invest-table').innerHTML = '<p style="font-size:13px;color:var(--text-muted)">inserisci dati nel tab investments</p>'; return; }
+  const first = invest.length ? invest[0] : null;
   const platforms = [
-    { name:'eToro',   sub:'stocks + ETF',       key:'etoro_eur' },
-    { name:'Revolut', sub:'crypto + metalli',    key:'revolut_eur' },
-    { name:'Fineco',  sub:'certificates + ETF',  key:'fineco_eur' },
+    { name:'eToro',   sub:'stocks + ETF',      key:'etoro_eur' },
+    { name:'Revolut', sub:'crypto + metalli',   key:'revolut_eur' },
+    { name:'Fineco',  sub:'certificates + ETF', key:'fineco_eur' },
   ];
-  const firstInvest = invest.length ? invest[0] : null;
   document.getElementById('invest-table').innerHTML =
     platforms.map(p => {
-      const val = Number(last[p.key]) || 0;
-      const start = firstInvest ? (Number(firstInvest[p.key]) || 0) : 0;
+      const val = Number(last[p.key])||0;
+      const start = first ? (Number(first[p.key])||0) : 0;
       const delta = val - start;
       return `<div class="invest-row">
         <div><div class="invest-name">${p.name}</div><div class="invest-sub">${p.sub}</div></div>
-        <div><div class="invest-val">${fmt(val)}</div>
-        <div class="invest-ytd ${delta >= 0 ? 'up' : 'down'}">${delta >= 0 ? '+' : ''}${fmt(delta)} YTD</div></div>
+        <div><div class="invest-val">${fmtM(val)}</div>
+        <div class="invest-ytd ${delta>=0?'up':'down'}">${delta>=0?'+':''}${fmtM(delta)} YTD</div></div>
       </div>`;
     }).join('') +
     `<div class="invest-row invest-total-row">
       <div><div class="invest-name">totale portafoglio</div></div>
-      <div><div class="invest-val" style="font-size:15px">${fmt(Number(last.totale_eur))}</div>
-      <div class="invest-ytd ${totalDelta >= 0 ? 'up' : 'down'}">${totalDelta >= 0 ? '+' : ''}${fmt(totalDelta)} YTD</div></div>
+      <div><div class="invest-val" style="font-size:15px">${fmtM(Number(last.totale_eur))}</div>
+      <div class="invest-ytd ${totalDelta>=0?'up':'down'}">${totalDelta>=0?'+':''}${fmtM(totalDelta)} YTD</div></div>
     </div>`;
 }
 
 // BAR CHART
-function renderBar(income) {
+function renderBar(income, invest) {
+  const incomeKeys = ['stipendio','airbnb','consulenze','interessi','altro'];
   document.getElementById('bar-legend').innerHTML = LABEL_KEYS.map(k =>
     `<span class="legend-item"><span class="legend-dot" style="background:${COLORS[k]}"></span>${LABELS[k]}</span>`).join('');
   const monthly = {};
-  LABEL_KEYS.forEach(k => { monthly[k] = new Array(12).fill(0); });
+  incomeKeys.forEach(k => { monthly[k] = new Array(12).fill(0); });
   income.forEach(row => {
-    const mi = (Number(row.mese_num) || 0) - 1;
-    if (mi >= 0 && mi < 12) LABEL_KEYS.forEach(k => { monthly[k][mi] += Number(row[k+'_eur']) || 0; });
+    const mi = (Number(row.mese_num)||0) - 1;
+    if (mi >= 0 && mi < 12) incomeKeys.forEach(k => { monthly[k][mi] += Number(row[k+'_eur'])||0; });
   });
-  if (barInst) barInst.destroy();
-  barInst = new Chart(document.getElementById('barChart').getContext('2d'), {
+  monthly.invest = new Array(12).fill(0);
+  invest.forEach(row => {
+    const mi = (Number(row.mese_num)||0) - 1;
+    if (mi >= 0 && mi < 12) monthly.invest[mi] = Math.max(0, Number(row.delta_eur)||0);
+  });
+  if (charts.bar) charts.bar.destroy();
+  charts.bar = new Chart(document.getElementById('barChart').getContext('2d'), {
     type: 'bar',
     data: {
       labels: ['gen','feb','mar','apr','mag','giu','lug','ago','set','ott','nov','dic'],
-      datasets: LABEL_KEYS.map(k => ({ label:LABELS[k], data:monthly[k], backgroundColor:COLORS[k], borderRadius:2, borderSkipped:false }))
+      datasets: LABEL_KEYS.map(k => ({ label:LABELS[k], data:monthly[k], backgroundColor:COLORS[k], borderRadius:2, borderSkipped:false, stack:'s1' }))
     },
     options: {
       responsive:true, maintainAspectRatio:false,
-      plugins: { legend:{display:false}, tooltip:{callbacks:{label:c=>` ${c.dataset.label}: €${Math.round(c.parsed.y).toLocaleString('it-IT')}`}} },
-      scales: {
-        x: { stacked:true, ticks:{font:{size:11},color:'#888780',autoSkip:false}, grid:{display:false} },
-        y: { stacked:true, ticks:{font:{size:11},color:'#888780',callback:v=>'€'+(v>=1000?(v/1000).toFixed(0)+'k':v)}, grid:{color:'rgba(0,0,0,0.05)'} }
+      plugins:{ legend:{display:false}, tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${fmtM(c.parsed.y)}`}} },
+      scales:{
+        x:{ stacked:true, ticks:{font:{size:11},color:'#888780',autoSkip:false}, grid:{display:false} },
+        y:{ stacked:true, ticks:{font:{size:11},color:'#888780',callback:v=>v>=1000?'€'+(v/1000).toFixed(0)+'k':'€'+v}, grid:{color:'rgba(0,0,0,0.05)'} }
       }
     }
   });
 }
 
 // TABLE
-function renderTable(income, year) {
+function renderTable(income, invest, year) {
   const curMonth = new Date().getMonth();
   const curYear = new Date().getFullYear();
-  const colTotals = new Array(5).fill(0);
+  const colTotals = new Array(6).fill(0);
+
+  const investByMonth = {};
+  invest.forEach(r => { investByMonth[Number(r.mese_num)-1] = Math.max(0, Number(r.delta_eur)||0); });
+
   const rows = MONTHS.map((mese, i) => {
-    const row = income.find(r => Number(r.mese_num) - 1 === i);
-    const vals = INCOME_KEYS.map(k => row ? (Number(row[k]) || 0) : 0);
+    const row = income.find(r => Number(r.mese_num)-1 === i);
+    const vals = [
+      row ? (Number(row.stipendio_eur)||0) : 0,
+      row ? (Number(row.airbnb_eur)||0) : 0,
+      row ? (Number(row.consulenze_eur)||0) : 0,
+      row ? (Number(row.interessi_eur)||0) : 0,
+      investByMonth[i] || 0,
+      row ? (Number(row.altro_eur)||0) : 0,
+    ];
     vals.forEach((v,j) => colTotals[j] += v);
     const total = vals.reduce((a,b) => a+b, 0);
-    const isCur = (i === curMonth) && (Number(year) === curYear) && row;
-    return `<tr class="${isCur ? 'cur' : ''}">
+    const isCur = (i === curMonth) && (Number(year) === curYear) && (row || investByMonth[i]);
+    return `<tr class="${isCur?'cur':''}">
       <td>${mese}</td>
       ${vals.map(v => `<td class="${v===0?'zero':''}">${v===0?'—':fmtS(v)}</td>`).join('')}
       <td>${total>0?'<strong>'+fmtS(total)+'</strong>':'—'}</td>
@@ -374,13 +428,83 @@ function renderTable(income, year) {
   </tr>`;
 }
 
-// UTILS
-function sum(arr, key) { return arr.reduce((s,r) => s + (Number(r[key])||0), 0); }
-function sumKeys(arr, keys) { return keys.reduce((s,k) => s + sum(arr,k), 0); }
-function fmt(n) { return '€' + Math.round(n||0).toLocaleString('it-IT'); }
+// LIQUIDITÀ
+function renderLiquidity(liq) {
+  const last = liq.length ? liq[liq.length - 1] : null;
+  const prev = liq.length > 1 ? liq[liq.length - 2] : null;
+
+  const accountsEl = document.getElementById('liq-accounts');
+  if (!last) {
+    accountsEl.innerHTML = '<p style="font-size:13px;color:var(--text-muted);grid-column:1/-1">inserisci dati nel tab liquidity</p>';
+    document.getElementById('liq-total').textContent = '—';
+    return;
+  }
+  accountsEl.innerHTML = LIQ_ACCOUNTS.map(k => {
+    const val = Number(last[k]) || 0;
+    return `<div class="liq-account">
+      <div class="liq-account-name">${k}</div>
+      <div class="liq-account-val">${fmtM(val)}</div>
+    </div>`;
+  }).join('');
+
+  const total = Number(last.totale) || 0;
+  const prevTotal = prev ? (Number(prev.totale) || 0) : null;
+  const delta = prevTotal !== null ? total - prevTotal : null;
+  document.getElementById('liq-total').textContent = fmtM(total);
+  const deltaEl = document.getElementById('liq-delta');
+  if (delta !== null) {
+    deltaEl.className = 'metric-delta ' + (delta >= 0 ? 'up' : 'down');
+    deltaEl.textContent = (delta >= 0 ? '↑ +' : '↓ ') + fmtM(delta) + ' vs mese prec.';
+  }
+
+  const liqLabels = liq.map(r => (r.mese||'').substring(0,3));
+  const liqTotals = liq.map(r => Number(r.totale)||0);
+  const liqDeltas = liq.map(r => Number(r.delta)||0);
+
+  if (charts.liq) charts.liq.destroy();
+  charts.liq = new Chart(document.getElementById('liqChart').getContext('2d'), {
+    type: 'line',
+    data: {
+      labels: liqLabels,
+      datasets: [{ label:'liquidità totale', data: liqTotals, borderColor:'#0F6E56', backgroundColor:'rgba(15,110,86,0.08)', borderWidth: 2, pointRadius: 3, fill: true, tension: 0.3 }]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{callbacks:{label:c=>` ${fmtM(c.parsed.y)}`}} },
+      scales:{
+        x:{ ticks:{font:{size:10},color:'#888780'}, grid:{display:false} },
+        y:{ ticks:{font:{size:10},color:'#888780',callback:v=>'€'+(v/1000).toFixed(0)+'k'}, grid:{color:'rgba(0,0,0,0.05)'} }
+      }
+    }
+  });
+
+  if (charts.liqDelta) charts.liqDelta.destroy();
+  charts.liqDelta = new Chart(document.getElementById('liqDeltaChart').getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: liqLabels,
+      datasets: [{ label:'variazione', data: liqDeltas, backgroundColor: liqDeltas.map(v => v >= 0 ? '#1D9E75' : '#D85A30'), borderRadius: 3 }]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{callbacks:{label:c=>` ${fmtM(c.parsed.y)}`}} },
+      scales:{
+        x:{ ticks:{font:{size:10},color:'#888780'}, grid:{display:false} },
+        y:{ ticks:{font:{size:10},color:'#888780',callback:v=>'€'+Math.round(v/1000)+'k'}, grid:{color:'rgba(0,0,0,0.05)'} }
+      }
+    }
+  });
+}
+
+// ---- UTILS ----
+function sum(arr, key) { return arr.reduce((s,r) => s+(Number(r[key])||0), 0); }
+function sumKeys(arr, keys) { return keys.reduce((s,k) => s+sum(arr,k), 0); }
+function fmtM(n) { return '€' + Math.round(n||0).toLocaleString('it-IT'); }
 function fmtS(n) {
-  if (!n) return '—';
-  return n >= 1000 ? '€'+(n/1000).toFixed(1)+'k' : '€'+Math.round(n);
+  if (!n || n === 0) return '—';
+  const v = Math.round(n);
+  if (v >= 1000) return '€' + (v/1000).toFixed(1).replace('.',',') + 'k';
+  return '€' + v;
 }
 </script>
 </body>
