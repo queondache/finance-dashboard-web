@@ -1,0 +1,1025 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>importa estratti conto — economia personale</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+  :root {
+    --purple: #534AB7; --purple-light: #EEEDFE;
+    --blue: #378ADD; --green: #1D9E75; --green-dark: #0F6E56;
+    --amber: #EF9F27; --gray: #888780; --red: #D85A30;
+    --bg: #f8f7f4; --card: #ffffff; --text: #1a1a1a;
+    --text-muted: #6b6a66; --border: rgba(0,0,0,0.08);
+    --radius: 12px; --radius-sm: 8px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  #login-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+  .login-box { background: var(--card); border-radius: var(--radius); padding: 2.5rem 2rem; width: 100%; max-width: 340px; border: 1px solid var(--border); }
+  .login-box h1 { font-size: 18px; font-weight: 500; margin-bottom: 6px; }
+  .login-box p { font-size: 13px; color: var(--text-muted); margin-bottom: 1.5rem; }
+  .login-box input { width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 15px; outline: none; background: var(--bg); color: var(--text); margin-bottom: 12px; }
+  .login-box input:focus { border-color: var(--purple); }
+  .login-box button { width: 100%; padding: 11px; background: var(--purple); color: white; border: none; border-radius: var(--radius-sm); font-size: 15px; font-weight: 500; cursor: pointer; }
+  .login-error { font-size: 12px; color: var(--red); margin-top: 8px; display: none; }
+
+  #app { display: none; }
+  .topbar { background: var(--card); border-bottom: 1px solid var(--border); padding: 0 1.25rem; height: 52px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+  .topbar h1 { font-size: 15px; font-weight: 500; }
+  .topbar-left { display: flex; align-items: center; gap: 10px; }
+  .topbar-right { display: flex; align-items: center; gap: 8px; }
+  .back-btn { font-size: 12px; color: var(--text-muted); background: none; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 4px 10px; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; }
+  .logout-btn { font-size: 12px; color: var(--text-muted); background: none; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 4px 10px; cursor: pointer; }
+
+  .main { padding: 1.25rem; max-width: 1100px; margin: 0 auto; }
+  .card { background: var(--card); border-radius: var(--radius); padding: 1.25rem; border: 1px solid var(--border); margin-bottom: 10px; }
+  .card-title { font-size: 13px; font-weight: 500; color: var(--text-muted); margin-bottom: 1rem; }
+  .section-label { font-size: 11px; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin: 1.25rem 0 0.6rem; }
+
+  /* Upload zone */
+  .upload-zone { border: 2px dashed var(--border); border-radius: var(--radius); padding: 2.5rem; text-align: center; cursor: pointer; transition: all 0.2s; background: var(--bg); }
+  .upload-zone:hover, .upload-zone.drag-over { border-color: var(--purple); background: var(--purple-light); }
+  .upload-zone svg { opacity: 0.4; margin-bottom: 10px; }
+  .upload-zone p { font-size: 14px; color: var(--text-muted); }
+  .upload-zone span { font-size: 12px; color: var(--text-muted); opacity: 0.7; display: block; margin-top: 4px; }
+  .upload-zone input { display: none; }
+  .upload-info { font-size: 12px; color: var(--text-muted); margin-top: 8px; }
+
+  /* File list */
+  .file-list { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+  .file-item { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--bg); border-radius: var(--radius-sm); border: 1px solid var(--border); font-size: 12px; }
+  .file-item .file-name { flex: 1; }
+  .file-badge { font-size: 10px; padding: 2px 7px; border-radius: 10px; font-weight: 500; }
+  .badge-ing { background: #FFF3CD; color: #856404; }
+  .badge-revolut { background: #D1ECF1; color: #0C5460; }
+  .badge-bnl { background: #D4EDDA; color: #155724; }
+  .badge-unknown { background: #F8D7DA; color: #721C24; }
+  .file-status { font-size: 11px; color: var(--text-muted); }
+  .file-remove { cursor: pointer; color: var(--red); opacity: 0.6; font-size: 14px; padding: 2px; }
+
+  /* Buttons */
+  .btn { padding: 9px 18px; border: none; border-radius: var(--radius-sm); font-size: 13px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+  .btn-primary { background: var(--purple); color: white; }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-green { background: var(--green); color: white; }
+  .btn-green:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-outline { background: none; border: 1px solid var(--border); color: var(--text); }
+  .btn-row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; align-items: center; }
+
+  /* Filters */
+  .filter-row { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; align-items: center; }
+  .filter-row select, .filter-row input { padding: 6px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 12px; background: var(--bg); color: var(--text); }
+
+  /* Transactions table */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th { text-align: left; padding: 7px 8px; color: var(--text-muted); font-weight: 400; border-bottom: 1px solid var(--border); white-space: nowrap; cursor: pointer; user-select: none; }
+  th:hover { color: var(--text); }
+  th.sort-asc::after { content: ' ↑'; }
+  th.sort-desc::after { content: ' ↓'; }
+  td { text-align: left; padding: 6px 8px; border-bottom: 1px solid rgba(0,0,0,0.04); white-space: nowrap; }
+  td.amount { text-align: right; font-variant-numeric: tabular-nums; }
+  td.amount.negative { color: var(--red); }
+  td.amount.positive { color: var(--green); }
+  tr:hover td { background: rgba(0,0,0,0.015); }
+
+  /* Category badge */
+  .cat-badge { display: inline-block; font-size: 10px; padding: 2px 7px; border-radius: 10px; font-weight: 500; white-space: nowrap; }
+  .cat-alimentari { background: #D4EDDA; color: #155724; }
+  .cat-ristorazione { background: #FFF3CD; color: #856404; }
+  .cat-trasporti { background: #D1ECF1; color: #0C5460; }
+  .cat-viaggi { background: #E2D9F3; color: #3D1A8F; }
+  .cat-shopping { background: #FADDE1; color: #8B1E3F; }
+  .cat-salute { background: #D4F1F9; color: #0A5F7A; }
+  .cat-casa_barcelona { background: #FDE8D8; color: #7A3E0A; }
+  .cat-casa_roma { background: #FFE9CC; color: #6B3D00; }
+  .cat-investimenti { background: #DCFCE7; color: #14532D; }
+  .cat-giroconto { background: #F3F4F6; color: #374151; }
+  .cat-entrate { background: #ECFDF5; color: #065F46; }
+  .cat-altro { background: #F3F4F6; color: #6B7280; }
+
+  select.cat-select { font-size: 11px; padding: 2px 4px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); cursor: pointer; }
+  select.cat-select:focus { outline: none; border-color: var(--purple); }
+
+  /* Bank badge in table */
+  .bank-badge { font-size: 10px; padding: 2px 6px; border-radius: 6px; font-weight: 500; }
+  .bank-ing { background: #FFF3CD; color: #856404; }
+  .bank-revolut { background: #D1ECF1; color: #0C5460; }
+  .bank-bnl { background: #D4EDDA; color: #155724; }
+
+  /* Summary table */
+  .summary-wrap table th { text-align: right; }
+  .summary-wrap table th:first-child { text-align: left; }
+  .summary-wrap table td { text-align: right; color: var(--text-muted); }
+  .summary-wrap table td:first-child { text-align: left; }
+  .summary-wrap tfoot td { font-weight: 500; border-top: 1px solid var(--border); padding-top: 9px; color: var(--text); }
+
+  /* Progress/status messages */
+  .status-msg { font-size: 12px; color: var(--text-muted); padding: 6px 0; }
+  .status-msg.error { color: var(--red); }
+  .status-msg.success { color: var(--green); }
+
+  /* Pagination */
+  .pagination { display: flex; align-items: center; gap: 6px; margin-top: 10px; font-size: 12px; color: var(--text-muted); }
+  .page-btn { padding: 4px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: none; cursor: pointer; font-size: 12px; }
+  .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .page-btn.active { background: var(--purple); color: white; border-color: var(--purple); }
+
+  /* Stat strip */
+  .stat-strip { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 12px; }
+  .stat-item { font-size: 12px; color: var(--text-muted); }
+  .stat-item strong { color: var(--text); font-size: 15px; margin-right: 3px; }
+
+  @media (max-width: 600px) {
+    .filter-row { flex-direction: column; }
+    .filter-row select, .filter-row input { width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-box">
+    <h1>economia personale</h1>
+    <p>accesso riservato</p>
+    <input type="password" id="pwd-input" placeholder="password" onkeydown="if(event.key==='Enter')doLogin()">
+    <button onclick="doLogin()">accedi</button>
+    <p class="login-error" id="login-error">password errata</p>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="topbar">
+    <div class="topbar-left">
+      <a href="index.html" class="back-btn">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M8 10L4 6L8 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        dashboard
+      </a>
+      <h1>importa estratti conto</h1>
+    </div>
+    <div class="topbar-right">
+      <button class="logout-btn" onclick="doLogout()">esci</button>
+    </div>
+  </div>
+
+  <div class="main">
+
+    <!-- STEP 1: UPLOAD -->
+    <div class="section-label">1 — carica i file</div>
+    <div class="card">
+      <div class="card-title">trascina o seleziona i file (PDF o CSV) — i dati non lasciano il dispositivo</div>
+
+      <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()">
+        <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+          <path d="M20 26V14M14 20L20 14L26 20" stroke="#534AB7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <rect x="4" y="4" width="32" height="32" rx="8" stroke="#534AB7" stroke-width="1.5" stroke-dasharray="4 3"/>
+        </svg>
+        <p>trascina i file qui oppure clicca per selezionarli</p>
+        <span>PDF (ING, BNL) · CSV (Revolut)</span>
+        <input type="file" id="file-input" multiple accept=".pdf,.csv" onchange="handleFileSelect(event)">
+      </div>
+
+      <div class="file-list" id="file-list"></div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" id="parse-btn" onclick="parseAllFiles()" disabled>
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 7L5 10L11 3" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          analizza file
+        </button>
+        <span class="status-msg" id="parse-status"></span>
+      </div>
+    </div>
+
+    <!-- STEP 2: TRANSACTIONS -->
+    <div id="transactions-section" style="display:none">
+      <div class="section-label">2 — revisiona le transazioni</div>
+      <div class="card">
+        <div class="card-title">transazioni estratte — correggi le categorie se necessario</div>
+
+        <div class="stat-strip" id="stat-strip"></div>
+
+        <div class="filter-row">
+          <select id="filter-banca" onchange="applyFilters()">
+            <option value="">tutte le banche</option>
+            <option value="ING">ING</option>
+            <option value="Revolut">Revolut</option>
+            <option value="BNL">BNL</option>
+          </select>
+          <select id="filter-cat" onchange="applyFilters()">
+            <option value="">tutte le categorie</option>
+          </select>
+          <select id="filter-mese" onchange="applyFilters()">
+            <option value="">tutti i mesi</option>
+          </select>
+          <select id="filter-tipo" onchange="applyFilters()">
+            <option value="">entrate + uscite</option>
+            <option value="uscita">solo uscite</option>
+            <option value="entrata">solo entrate</option>
+          </select>
+          <input type="text" id="filter-search" placeholder="cerca descrizione..." oninput="applyFilters()" style="min-width:180px">
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th onclick="sortBy('data')" id="th-data">data</th>
+                <th onclick="sortBy('descrizione')" id="th-descrizione">descrizione</th>
+                <th onclick="sortBy('importo')" id="th-importo">importo</th>
+                <th>categoria</th>
+                <th>banca</th>
+              </tr>
+            </thead>
+            <tbody id="tx-body"></tbody>
+          </table>
+        </div>
+
+        <div class="pagination" id="pagination"></div>
+      </div>
+    </div>
+
+    <!-- STEP 3: SUMMARY -->
+    <div id="summary-section" style="display:none">
+      <div class="section-label">3 — riepilogo mensile</div>
+      <div class="card summary-wrap">
+        <div class="card-title">aggregati per mese e categoria — questi dati verranno salvati nel Google Sheet</div>
+        <div id="summary-content"></div>
+        <div class="btn-row" style="margin-top:16px">
+          <button class="btn btn-green" id="save-btn" onclick="saveToSheet()">
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 7L5 10L11 3" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            salva nel Google Sheet
+          </button>
+          <span class="status-msg" id="save-status"></span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ============================================================
+// CONFIG
+// ============================================================
+const API_URL = 'https://script.google.com/macros/s/AKfycbxShUWi1OmhILJ1kJxleAylHa8s-Lx6w2EFM2FB_iPKPg85gJCgGhVlQA7oHpu0z24BiA/exec';
+const PWD_HASH = '074c1cbd817a1e4a5754d93409a9a6fb340f457fd933d4602114149c311adea6';
+const PDFJS_WORKER = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER;
+
+// ============================================================
+// CATEGORIES
+// ============================================================
+const CATEGORIES = [
+  'alimentari','ristorazione','trasporti','viaggi','shopping',
+  'salute','casa_barcelona','casa_roma','investimenti','giroconto','entrate','altro'
+];
+
+// Keyword rules: { pattern (regex string, case-insensitive), category }
+const DEFAULT_RULES = [
+  // alimentari
+  { p: 'mercadona|carrefour|lidl|aldi|dia\\b|supermercado|supermarket|condis|bonpreu|esclat|consum|hipercor|eroski|el corte ingles.*alimenta|fresh market|farmer|fruta|verdura|fruteria|alimentari|supermercati|coop|esselunga|conad|pam\\b|todis|simply|eurospin|penny market', c: 'alimentari' },
+  // ristorazione
+  { p: 'restaurante|restaurant|ristorante|bar\\b|cafe|cafeteria|caffe|pizzeria|trattoria|osteria|hamburguer|burger|mcdonald|kfc|domino|just eat|deliveroo|glovo|ubereats|uber eats|wolt|taberna|tasca|meson|bocateria|sandwich|sushi|ramen|noodle|cerveceria|bodega|terraza', c: 'ristorazione' },
+  // trasporti
+  { p: 'metro|subway|bus\\b|autobus|tram\\b|taxi|uber\\b|cabify|bolt\\b|renfe|rodalies|fgc|aerobus|bicing|emt\\b|tmb\\b|benzina|gasolina|repsol|bp\\b|galp|cepsa|parcheggio|parking|peaje|autopista|autostrada|atm\\b|amt\\b|trenitalia|italo\\b|flixbus|blablacar', c: 'trasporti' },
+  // viaggi
+  { p: 'vueling|ryanair|easyjet|iberia|lufthansa|british airways|air france|alitalia|ita airways|wizz|transavia|norwegian|aeromexico|latam|volo|flight|hotel|hostel|airbnb|booking\\.com|hotels\\.com|expedia|tripadvisor|museu|museo|monument|tour\\b|excursion|rent a car|hertz|europcar|sixt|avis', c: 'viaggi' },
+  // shopping
+  { p: 'amazon|zara|h&m|mango\\b|primark|stradivarius|bershka|pull.bear|massimo dutti|mediamarkt|fnac|apple store|ikea|leroy merlin|decathlon|cortefiel|el corte ingles|ebay|aliexpress|zalando|asos|shein|vinted', c: 'shopping' },
+  // salute
+  { p: 'farmacia|farmacia|pharmacy|drugstore|parafarmacia|medico|doctor|dentist|dentista|clinica|clinic|hospital|salute|health|gym|gimnasio|palestra|crossfit|yoga|pilates|fisio|fisioterapia', c: 'salute' },
+  // casa_barcelona — affitto BCN (Linda Mazzotti) + utenze
+  { p: 'linda mazzotti|mazzotti', c: 'casa_barcelona' },
+  { p: 'endesa|naturgy|gas natural|iberdrola|agbar|aigues|aguas de barcelona|comunitat de propietaris|comunidad de propietarios', c: 'casa_barcelona' },
+  // casa_roma — mutuo BNL + bollette Roma
+  { p: 'IT40P0100503235000000005226|banca nazionale del lavoro.*IT40|E\\.ON|eon energia|acea|hera\\b|enel\\b|eni gas|sorgenia|edison\\b|roma capitale|bolletta roma', c: 'casa_roma' },
+  // investimenti
+  { p: 'etoro|fineco|degiro|saxo bank|trading 212|interactive brokers|revolut.*invest|savings\\s+vault|revolut.*savings', c: 'investimenti' },
+  // entrate
+  { p: 'zeroco2|zero co2|stipendio|salary|payroll|pagamento stipendio|rimborso|refund|reembolso|accredito|income|affitti|canone', c: 'entrate' },
+  // giroconto (interni)
+  { p: 'giroconto|bonifico a me stesso|trasferimento tra conti|transfer.*own|own.*account|between accounts|revolut.*to.*revolut', c: 'giroconto' },
+];
+
+// Load custom rules from localStorage
+function loadCustomRules() {
+  try { return JSON.parse(localStorage.getItem('import_custom_rules') || '[]'); }
+  catch(e) { return []; }
+}
+function saveCustomRules(rules) {
+  localStorage.setItem('import_custom_rules', JSON.stringify(rules));
+}
+
+function categorize(description) {
+  const desc = (description || '').toLowerCase();
+  // Custom rules first (user-defined, override defaults)
+  const custom = loadCustomRules();
+  for (const r of custom) {
+    if (new RegExp(r.p, 'i').test(desc)) return r.c;
+  }
+  // Default rules
+  for (const r of DEFAULT_RULES) {
+    if (new RegExp(r.p, 'i').test(desc)) return r.c;
+  }
+  return 'altro';
+}
+
+function learnCategory(description, category) {
+  if (!description || !category) return;
+  // Extract a simple keyword from the description to store as a custom rule
+  const words = description.toLowerCase().replace(/[^a-z0-9àáâãäåèéêëìíîïòóôõöùúûü\s]/g, ' ').trim().split(/\s+/);
+  // Use first meaningful word (> 3 chars) as keyword
+  const keyword = words.find(w => w.length > 3) || words[0];
+  if (!keyword) return;
+  const custom = loadCustomRules();
+  // Avoid duplicates
+  if (!custom.find(r => r.p === keyword)) {
+    custom.unshift({ p: keyword, c: category }); // Prepend so it takes priority
+    if (custom.length > 200) custom.splice(200); // Cap at 200 custom rules
+    saveCustomRules(custom);
+  }
+}
+
+// ============================================================
+// AUTH
+// ============================================================
+async function sha256(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+async function doLogin() {
+  const hash = await sha256(document.getElementById('pwd-input').value);
+  if (hash === PWD_HASH) {
+    sessionStorage.setItem('auth','1');
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+  } else {
+    document.getElementById('login-error').style.display = 'block';
+    document.getElementById('pwd-input').value = '';
+  }
+}
+function doLogout() { sessionStorage.removeItem('auth'); location.reload(); }
+window.onload = () => {
+  if (sessionStorage.getItem('auth') === '1') {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+  }
+};
+
+// ============================================================
+// FILE MANAGEMENT
+// ============================================================
+let pendingFiles = []; // { file, bank, status }
+let allTransactions = []; // parsed & categorized
+let filteredTransactions = []; // after filters
+let currentPage = 1;
+const PAGE_SIZE = 50;
+let sortKey = 'data';
+let sortDir = 'desc';
+
+function detectBank(filename) {
+  const fn = filename.toLowerCase();
+  if (fn.includes('ing') || fn.startsWith('movimientos') || fn.startsWith('extrato_ing')) return 'ING';
+  if (fn.includes('revolut')) return 'Revolut';
+  if (fn.includes('bnl')) return 'BNL';
+  return 'unknown';
+}
+
+function handleFileSelect(event) {
+  addFiles(Array.from(event.target.files));
+  event.target.value = '';
+}
+
+// Drag & drop
+const uploadZone = document.getElementById('upload-zone');
+uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+uploadZone.addEventListener('drop', e => {
+  e.preventDefault();
+  uploadZone.classList.remove('drag-over');
+  addFiles(Array.from(e.dataTransfer.files).filter(f => f.name.match(/\.(pdf|csv)$/i)));
+});
+
+function addFiles(files) {
+  for (const f of files) {
+    if (!f.name.match(/\.(pdf|csv)$/i)) continue;
+    if (pendingFiles.find(p => p.file.name === f.name && p.file.size === f.size)) continue; // dedupe
+    pendingFiles.push({ file: f, bank: detectBank(f.name), status: 'pending' });
+  }
+  renderFileList();
+  document.getElementById('parse-btn').disabled = pendingFiles.length === 0;
+}
+
+function removeFile(idx) {
+  pendingFiles.splice(idx, 1);
+  renderFileList();
+  document.getElementById('parse-btn').disabled = pendingFiles.length === 0;
+}
+
+function changeBank(idx, val) {
+  pendingFiles[idx].bank = val;
+  renderFileList();
+}
+
+function renderFileList() {
+  const list = document.getElementById('file-list');
+  if (pendingFiles.length === 0) { list.innerHTML = ''; return; }
+  list.innerHTML = pendingFiles.map((f, i) => `
+    <div class="file-item">
+      <span class="file-name">${f.file.name}</span>
+      <span>${(f.file.size/1024).toFixed(0)} KB</span>
+      <select style="font-size:11px;padding:2px 4px;border:1px solid var(--border);border-radius:6px;background:var(--bg);" onchange="changeBank(${i}, this.value)">
+        <option value="ING" ${f.bank==='ING'?'selected':''}>ING</option>
+        <option value="Revolut" ${f.bank==='Revolut'?'selected':''}>Revolut</option>
+        <option value="BNL" ${f.bank==='BNL'?'selected':''}>BNL</option>
+        <option value="unknown" ${f.bank==='unknown'?'selected':''}>— sconosciuta</option>
+      </select>
+      <span class="file-status">${f.status === 'done' ? '✓' : f.status === 'error' ? '✗ errore' : ''}</span>
+      <span class="file-remove" onclick="removeFile(${i})">×</span>
+    </div>
+  `).join('');
+}
+
+// ============================================================
+// PARSERS
+// ============================================================
+
+async function parseAllFiles() {
+  const btn = document.getElementById('parse-btn');
+  btn.disabled = true;
+  setParseStatus('analisi in corso...', '');
+
+  allTransactions = [];
+
+  for (let i = 0; i < pendingFiles.length; i++) {
+    const pf = pendingFiles[i];
+    try {
+      let txs = [];
+      if (pf.bank === 'Revolut') {
+        txs = await parseRevolutCSV(pf.file);
+      } else if (pf.bank === 'ING') {
+        txs = await parseINGPDF(pf.file);
+      } else if (pf.bank === 'BNL') {
+        txs = await parseBNLPDF(pf.file);
+      } else {
+        pf.status = 'error';
+        continue;
+      }
+      // Add bank + unique id
+      txs.forEach((tx, j) => {
+        tx.bank = pf.bank;
+        tx.id = `${i}_${j}`;
+        tx.category = categorize(tx.descrizione);
+      });
+      allTransactions.push(...txs);
+      pf.status = 'done';
+    } catch(err) {
+      console.error('Parse error', pf.file.name, err);
+      pf.status = 'error';
+    }
+  }
+
+  renderFileList();
+
+  // Sort by date desc
+  allTransactions.sort((a, b) => new Date(b.data) - new Date(a.data));
+
+  if (allTransactions.length === 0) {
+    setParseStatus('nessuna transazione trovata — verifica il formato dei file', 'error');
+    btn.disabled = false;
+    return;
+  }
+
+  setParseStatus(`${allTransactions.length} transazioni estratte`, 'success');
+  btn.disabled = false;
+
+  populateFilters();
+  applyFilters();
+  document.getElementById('transactions-section').style.display = 'block';
+  buildSummary();
+  document.getElementById('summary-section').style.display = 'block';
+  document.getElementById('transactions-section').scrollIntoView({ behavior: 'smooth' });
+}
+
+function setParseStatus(msg, type) {
+  const el = document.getElementById('parse-status');
+  el.textContent = msg;
+  el.className = 'status-msg' + (type ? ' ' + type : '');
+}
+
+// ---- ING PDF Parser ----
+async function parseINGPDF(file) {
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  let fullText = '';
+
+  for (let p = 1; p <= pdf.numPages; p++) {
+    const page = await pdf.getPage(p);
+    const content = await page.getTextContent();
+    // Get items sorted by position (top-to-bottom, left-to-right)
+    const items = content.items.sort((a, b) => {
+      const yDiff = b.transform[5] - a.transform[5];
+      if (Math.abs(yDiff) > 3) return yDiff;
+      return a.transform[4] - b.transform[4];
+    });
+    fullText += items.map(i => i.str).join('\n') + '\n';
+  }
+
+  return parseINGText(fullText);
+}
+
+function parseINGText(text) {
+  const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+  const txs = [];
+
+  // Stop at RIASSUNTO SCALARE or similar section markers
+  const stopPatterns = /RIASSUNTO SCALARE|SALDO INIZIALE|RIEPILOGO/i;
+
+  // ING date pattern: dd/mm/yyyy
+  const dateRe = /^(\d{2})\/(\d{2})\/(\d{4})$/;
+
+  let i = 0;
+  while (i < lines.length) {
+    if (stopPatterns.test(lines[i])) break;
+
+    const dateMatch = lines[i].match(dateRe);
+    if (!dateMatch) { i++; continue; }
+
+    const dataOp = `${dateMatch[3]}-${dateMatch[2]}-${dateMatch[1]}`;
+
+    // Next line could be data valuta (another date) — skip it
+    let j = i + 1;
+    if (j < lines.length && lines[j].match(dateRe)) j++;
+
+    // Collect remaining lines until next date or stop
+    // We need to find USCITE, ENTRATE, DESCRIZIONE
+    // ING layout: DATA OP | DATA VALUTA | USCITE | ENTRATE | DESCRIZIONE
+    // In text extraction the columns come as separate tokens
+
+    // Look ahead: find amount lines (numbers with dots/commas)
+    const amtRe = /^-?[\d\.]+,\d{2}$/;
+
+    let uscita = 0, entrata = 0;
+    let descParts = [];
+
+    while (j < lines.length && !lines[j].match(dateRe) && !stopPatterns.test(lines[j])) {
+      const l = lines[j];
+      if (amtRe.test(l)) {
+        const val = parseAmount(l);
+        // We'll accumulate amounts; ING puts uscita then entrata or vice versa
+        // We'll assign based on context later
+        if (uscita === 0 && entrata === 0) {
+          // First amount encountered for this row — could be either
+          // ING: uscite column first, then entrate. One of them is 0/empty.
+          // Since we can't always tell column position from raw text,
+          // we'll collect all amounts and descriptions
+          descParts.push({ type: 'amt', val });
+        } else {
+          descParts.push({ type: 'amt', val });
+        }
+      } else {
+        descParts.push({ type: 'txt', val: l });
+      }
+      j++;
+    }
+
+    // Separate amounts and texts
+    const amounts = descParts.filter(x => x.type === 'amt').map(x => x.val);
+    const texts = descParts.filter(x => x.type === 'txt').map(x => x.val).join(' ').trim();
+
+    // ING: typically one non-zero amount per row (uscita OR entrata)
+    // If two amounts: first = uscita, second = entrata (one is usually 0 or absent)
+    let importo = 0;
+    if (amounts.length === 1) {
+      importo = amounts[0];
+    } else if (amounts.length >= 2) {
+      // Check: if first > 0 it's uscita (negative), if second > 0 it's entrata (positive)
+      const a = amounts[0], b = amounts[1];
+      if (a > 0 && b === 0) importo = -a;
+      else if (b > 0 && a === 0) importo = b;
+      else if (a > 0) importo = -a; // default: treat first as uscita
+    }
+
+    if (texts && importo !== 0) {
+      txs.push({ data: dataOp, descrizione: texts, importo });
+    } else if (amounts.length > 0 && importo !== 0) {
+      txs.push({ data: dataOp, descrizione: '(nessuna descrizione)', importo });
+    }
+
+    i = j;
+  }
+
+  return txs;
+}
+
+// ---- BNL PDF Parser ----
+async function parseBNLPDF(file) {
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  let allItems = [];
+
+  for (let p = 1; p <= pdf.numPages; p++) {
+    const page = await pdf.getPage(p);
+    const content = await page.getTextContent();
+    allItems.push(...content.items.map(item => ({
+      str: item.str,
+      x: Math.round(item.transform[4]),
+      y: Math.round(item.transform[5]),
+      page: p
+    })));
+  }
+
+  return parseBNLItems(allItems);
+}
+
+function parseBNLItems(items) {
+  const txs = [];
+  const dateRe = /^(\d{2})\/(\d{2})\/(\d{4})$/;
+  const amtRe = /^-?[\d\.]+,\d{2}$/;
+  const stopPattern = /SALDO|ESTRATTO CONTO|Pagina \d/i;
+
+  // Group items by Y-coordinate (line)
+  const lines = {};
+  for (const item of items) {
+    const key = `${item.page}_${item.y}`;
+    if (!lines[key]) lines[key] = [];
+    lines[key].push(item);
+  }
+
+  // Sort lines by page then y (descending = top to bottom)
+  const sortedLineKeys = Object.keys(lines).sort((a, b) => {
+    const [pa, ya] = a.split('_').map(Number);
+    const [pb, yb] = b.split('_').map(Number);
+    if (pa !== pb) return pa - pb;
+    return yb - ya;
+  });
+
+  let i = 0;
+  while (i < sortedLineKeys.length) {
+    const lineItems = lines[sortedLineKeys[i]].sort((a, b) => a.x - b.x);
+    const lineStr = lineItems.map(x => x.str).join(' ').trim();
+
+    if (stopPattern.test(lineStr)) { i++; continue; }
+
+    // BNL line starts with a date in first column
+    const firstToken = lineItems[0]?.str?.trim();
+    const dateMatch = firstToken?.match(dateRe);
+    if (!dateMatch) { i++; continue; }
+
+    const dataContabile = `${dateMatch[3]}-${dateMatch[2]}-${dateMatch[1]}`;
+
+    // Parse remaining tokens from this line
+    const tokens = lineItems.map(x => x.str.trim()).filter(x => x);
+    // tokens[0] = data contabile, tokens[1] = data valuta (possibly), tokens[2] = causale, rest = description + amounts
+    let descrizione = '';
+    let importo = 0;
+    const amounts = [];
+    const descParts = [];
+
+    for (let k = 1; k < tokens.length; k++) {
+      if (tokens[k].match(dateRe)) continue; // skip data valuta
+      if (tokens[k].match(/^\d{3,4}$/) && k < 4) continue; // skip causale ABI (3-4 digit code)
+      if (amtRe.test(tokens[k])) {
+        amounts.push(parseAmount(tokens[k]));
+      } else {
+        descParts.push(tokens[k]);
+      }
+    }
+
+    descrizione = descParts.join(' ').trim();
+
+    // BNL: USCITA | ENTRATA — last two amounts typically
+    if (amounts.length === 2) {
+      const [a, b] = amounts;
+      if (a > 0 && b === 0) importo = -a;
+      else if (b > 0 && a === 0) importo = b;
+      else if (a > 0) importo = -a;
+    } else if (amounts.length === 1) {
+      importo = amounts[0]; // Will determine sign below
+    }
+
+    // Look ahead for continuation lines (description wraps to next line)
+    let j = i + 1;
+    while (j < sortedLineKeys.length) {
+      const nextLine = lines[sortedLineKeys[j]].sort((a, b) => a.x - b.x);
+      const nextStr = nextLine.map(x => x.str.trim()).filter(x => x).join(' ');
+      if (!nextStr || nextLine[0]?.str?.trim().match(dateRe) || stopPattern.test(nextStr)) break;
+      // If this line has no date and no amounts, it's a description continuation
+      const hasDate = nextLine[0]?.str?.trim().match(dateRe);
+      const hasAmt = nextLine.some(x => amtRe.test(x.str.trim()));
+      if (!hasDate && !hasAmt) {
+        descrizione += ' ' + nextStr;
+        j++;
+      } else break;
+    }
+
+    if (descrizione && importo !== 0) {
+      txs.push({ data: dataContabile, descrizione: descrizione.trim(), importo });
+    }
+
+    i = j;
+  }
+
+  return txs;
+}
+
+// ---- Revolut CSV Parser ----
+async function parseRevolutCSV(file) {
+  const text = await file.text();
+  return new Promise((resolve, reject) => {
+    Papa.parse(text, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (results) => {
+        const txs = [];
+        for (const row of results.data) {
+          // Filter: Prodotto = Attuale (or "Current"), Stato = COMPLETATO (or "COMPLETED")
+          const prodotto = (row['Prodotto'] || row['Product'] || '').trim();
+          const stato = (row['State'] || row['Stato'] || '').trim().toUpperCase();
+          const desc = (row['Descrizione'] || row['Description'] || '').trim();
+
+          if (prodotto !== 'Attuale' && prodotto !== 'Current') continue;
+          if (stato !== 'COMPLETATO' && stato !== 'COMPLETED') continue;
+          // Skip internal transfers
+          if (/accredita eur .* da eur/i.test(desc)) continue;
+          if (/To EUR|From EUR/i.test(desc) && /Revolut/i.test(desc)) continue;
+
+          const dateRaw = row['Data di inizio'] || row['Started Date'] || '';
+          const amountRaw = row['Importo'] || row['Amount'] || '0';
+          const currency = (row['Valuta'] || row['Currency'] || 'EUR').trim();
+
+          // Parse date: YYYY-MM-DD HH:MM:SS or YYYY-MM-DD
+          let dataStr = '';
+          const dm = dateRaw.match(/(\d{4})-(\d{2})-(\d{2})/);
+          if (dm) dataStr = `${dm[1]}-${dm[2]}-${dm[3]}`;
+
+          // Parse amount (European format: comma as decimal)
+          let importo = parseFloat(String(amountRaw).replace(/\./g, '').replace(',', '.')) || 0;
+
+          if (dataStr && importo !== 0) {
+            txs.push({ data: dataStr, descrizione: desc, importo, currency });
+          }
+        }
+        resolve(txs);
+      },
+      error: reject
+    });
+  });
+}
+
+// ---- Amount parser ----
+function parseAmount(str) {
+  // European format: 1.234,56 → 1234.56
+  return parseFloat(str.replace(/\./g, '').replace(',', '.')) || 0;
+}
+
+// ============================================================
+// FILTERS & TABLE RENDERING
+// ============================================================
+
+function populateFilters() {
+  // Categories
+  const catSel = document.getElementById('filter-cat');
+  catSel.innerHTML = '<option value="">tutte le categorie</option>' +
+    CATEGORIES.map(c => `<option value="${c}">${c.replace('_',' ')}</option>`).join('');
+
+  // Months
+  const months = [...new Set(allTransactions.map(tx => tx.data.slice(0,7)))].sort().reverse();
+  const meseSel = document.getElementById('filter-mese');
+  meseSel.innerHTML = '<option value="">tutti i mesi</option>' +
+    months.map(m => `<option value="${m}">${formatMonth(m)}</option>`).join('');
+}
+
+function formatMonth(ym) {
+  const [y, m] = ym.split('-');
+  const names = ['gen','feb','mar','apr','mag','giu','lug','ago','set','ott','nov','dic'];
+  return `${names[parseInt(m)-1]} ${y}`;
+}
+
+function applyFilters() {
+  const banca = document.getElementById('filter-banca').value;
+  const cat = document.getElementById('filter-cat').value;
+  const mese = document.getElementById('filter-mese').value;
+  const tipo = document.getElementById('filter-tipo').value;
+  const search = document.getElementById('filter-search').value.toLowerCase();
+
+  filteredTransactions = allTransactions.filter(tx => {
+    if (banca && tx.bank !== banca) return false;
+    if (cat && tx.category !== cat) return false;
+    if (mese && !tx.data.startsWith(mese)) return false;
+    if (tipo === 'uscita' && tx.importo >= 0) return false;
+    if (tipo === 'entrata' && tx.importo < 0) return false;
+    if (search && !tx.descrizione.toLowerCase().includes(search)) return false;
+    return true;
+  });
+
+  sortTransactions();
+  currentPage = 1;
+  renderTable();
+  updateStats();
+}
+
+function sortBy(key) {
+  if (sortKey === key) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+  else { sortKey = key; sortDir = key === 'data' ? 'desc' : 'asc'; }
+  sortTransactions();
+  renderTable();
+}
+
+function sortTransactions() {
+  filteredTransactions.sort((a, b) => {
+    let va = a[sortKey], vb = b[sortKey];
+    if (sortKey === 'data') { va = new Date(va); vb = new Date(vb); }
+    if (sortKey === 'importo') { va = parseFloat(va); vb = parseFloat(vb); }
+    if (va < vb) return sortDir === 'asc' ? -1 : 1;
+    if (va > vb) return sortDir === 'asc' ? 1 : -1;
+    return 0;
+  });
+  // Update sort indicators
+  ['data','descrizione','importo'].forEach(k => {
+    const th = document.getElementById(`th-${k}`);
+    if (th) th.className = sortKey === k ? `sort-${sortDir}` : '';
+  });
+}
+
+function updateStats() {
+  const strip = document.getElementById('stat-strip');
+  const total = filteredTransactions.length;
+  const uscite = filteredTransactions.filter(t => t.importo < 0).reduce((s, t) => s + t.importo, 0);
+  const entrate = filteredTransactions.filter(t => t.importo > 0).reduce((s, t) => s + t.importo, 0);
+  strip.innerHTML = `
+    <div class="stat-item"><strong>${total}</strong> transazioni</div>
+    <div class="stat-item"><strong style="color:var(--red)">${fmt(uscite)}</strong> uscite</div>
+    <div class="stat-item"><strong style="color:var(--green)">${fmt(entrate)}</strong> entrate</div>
+    <div class="stat-item"><strong>${fmt(entrate + uscite)}</strong> saldo netto</div>
+  `;
+}
+
+function renderTable() {
+  const body = document.getElementById('tx-body');
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const page = filteredTransactions.slice(start, start + PAGE_SIZE);
+
+  body.innerHTML = page.map(tx => `
+    <tr>
+      <td>${tx.data}</td>
+      <td style="max-width:320px;overflow:hidden;text-overflow:ellipsis;" title="${escHtml(tx.descrizione)}">${escHtml(tx.descrizione)}</td>
+      <td class="amount ${tx.importo < 0 ? 'negative' : 'positive'}">${fmt(tx.importo)}</td>
+      <td>
+        <select class="cat-select ${tx.category ? 'cat-'+tx.category : ''}"
+          onchange="updateCategory('${tx.id}', this.value, '${escAttr(tx.descrizione)}')"
+          style="color:inherit;">
+          ${CATEGORIES.map(c => `<option value="${c}" ${tx.category===c?'selected':''}>${c.replace('_',' ')}</option>`).join('')}
+        </select>
+      </td>
+      <td><span class="bank-badge bank-${tx.bank.toLowerCase()}">${tx.bank}</span></td>
+    </tr>
+  `).join('');
+
+  renderPagination();
+}
+
+function updateCategory(id, newCat, desc) {
+  const tx = allTransactions.find(t => t.id === id);
+  if (!tx) return;
+  tx.category = newCat;
+  learnCategory(desc, newCat);
+  buildSummary();
+  // Re-render just the select style
+  applyFilters();
+}
+
+function renderPagination() {
+  const totalPages = Math.ceil(filteredTransactions.length / PAGE_SIZE);
+  if (totalPages <= 1) { document.getElementById('pagination').innerHTML = ''; return; }
+
+  let html = `<span>${filteredTransactions.length} righe</span>`;
+  html += `<button class="page-btn" onclick="goPage(${currentPage-1})" ${currentPage===1?'disabled':''}>‹</button>`;
+
+  // Show page range
+  const start = Math.max(1, currentPage - 2);
+  const end = Math.min(totalPages, currentPage + 2);
+  if (start > 1) html += `<button class="page-btn" onclick="goPage(1)">1</button>${start > 2 ? '<span>…</span>' : ''}`;
+  for (let p = start; p <= end; p++) {
+    html += `<button class="page-btn ${p===currentPage?'active':''}" onclick="goPage(${p})">${p}</button>`;
+  }
+  if (end < totalPages) html += `${end < totalPages-1 ? '<span>…</span>' : ''}<button class="page-btn" onclick="goPage(${totalPages})">${totalPages}</button>`;
+  html += `<button class="page-btn" onclick="goPage(${currentPage+1})" ${currentPage===totalPages?'disabled':''}>›</button>`;
+
+  document.getElementById('pagination').innerHTML = html;
+}
+
+function goPage(p) {
+  currentPage = p;
+  renderTable();
+  document.getElementById('transactions-section').scrollIntoView({ behavior: 'smooth' });
+}
+
+// ============================================================
+// SUMMARY
+// ============================================================
+function buildSummary() {
+  // Aggregate: { month: { category: totalImporto } }
+  const summary = {};
+
+  for (const tx of allTransactions) {
+    if (tx.category === 'giroconto') continue; // exclude internal transfers
+    const month = tx.data.slice(0, 7);
+    if (!summary[month]) summary[month] = {};
+    if (!summary[month][tx.category]) summary[month][tx.category] = 0;
+    summary[month][tx.category] += tx.importo;
+  }
+
+  const months = Object.keys(summary).sort().reverse();
+  const cats = CATEGORIES.filter(c => c !== 'giroconto');
+
+  // Build table
+  let html = '<div class="table-wrap"><table><thead><tr><th>mese</th>';
+  cats.forEach(c => { html += `<th>${c.replace('_',' ')}</th>`; });
+  html += '<th>totale uscite</th><th>totale entrate</th></tr></thead><tbody>';
+
+  for (const month of months) {
+    const row = summary[month];
+    const uscite = cats.filter(c => c !== 'entrate').reduce((s, c) => {
+      const v = row[c] || 0; return s + (v < 0 ? v : 0);
+    }, 0);
+    const entrate = row['entrate'] || 0;
+
+    html += `<tr><td><strong>${formatMonth(month)}</strong></td>`;
+    cats.forEach(c => {
+      const v = row[c] || 0;
+      const cls = v < 0 ? 'negative' : v > 0 ? 'positive' : '';
+      html += `<td class="amount ${cls}" style="font-size:11px;color:var(--text-muted)">${v !== 0 ? fmt(v) : ''}</td>`;
+    });
+    html += `<td class="amount negative" style="font-weight:500">${fmt(uscite)}</td>`;
+    html += `<td class="amount positive" style="font-weight:500">${fmt(entrate)}</td>`;
+    html += '</tr>';
+  }
+
+  html += '</tbody></table></div>';
+  document.getElementById('summary-content').innerHTML = html;
+}
+
+// ============================================================
+// SAVE TO SHEET
+// ============================================================
+async function saveToSheet() {
+  const btn = document.getElementById('save-btn');
+  btn.disabled = true;
+  setSaveStatus('invio in corso...', '');
+
+  // Build payload: array of { month, category, total }
+  const payload = [];
+  for (const tx of allTransactions) {
+    if (tx.category === 'giroconto') continue;
+    const month = tx.data.slice(0, 7);
+    const existing = payload.find(p => p.month === month && p.category === tx.category);
+    if (existing) { existing.total += tx.importo; }
+    else { payload.push({ month, category: tx.category, total: tx.importo }); }
+  }
+
+  // Round to 2 decimals
+  payload.forEach(p => { p.total = Math.round(p.total * 100) / 100; });
+
+  try {
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      mode: 'no-cors', // GAS requires no-cors for cross-origin POST
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'saveTransactionsSummary', data: payload })
+    });
+    // With no-cors we can't read the response — assume success if no error thrown
+    setSaveStatus('salvato nel Google Sheet ✓', 'success');
+  } catch(err) {
+    setSaveStatus('errore: ' + err.message, 'error');
+    btn.disabled = false;
+  }
+}
+
+function setSaveStatus(msg, type) {
+  const el = document.getElementById('save-status');
+  el.textContent = msg;
+  el.className = 'status-msg' + (type ? ' ' + type : '');
+}
+
+// ============================================================
+// UTILS
+// ============================================================
+function fmt(n) {
+  return new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2 }).format(n);
+}
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function escAttr(s) {
+  return String(s).replace(/'/g, "\\'").replace(/"/g, '&quot;');
+}
+</script>
+</body>
+</html>
