@@ -101,6 +101,7 @@
   .cat-giroconto { background: #F3F4F6; color: #374151; }
   .cat-entrate { background: #ECFDF5; color: #065F46; }
   .cat-altro { background: #F3F4F6; color: #6B7280; }
+  .cat-tasse { background: #FDE2E2; color: #7F1D1D; }
 
   select.cat-select { font-size: 11px; padding: 2px 4px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); cursor: pointer; }
   select.cat-select:focus { outline: none; border-color: var(--purple); }
@@ -277,34 +278,24 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER;
 // ============================================================
 const CATEGORIES = [
   'alimentari','ristorazione','trasporti','viaggi','shopping',
-  'salute','casa_barcelona','casa_roma','investimenti','giroconto','entrate','altro'
+  'salute','casa_barcelona','casa_roma','investimenti','giroconto','entrate','tasse','altro'
 ];
 
-// Keyword rules: { pattern (regex string, case-insensitive), category }
+// Keyword rules: array of { keywords[], category }
+// Matching: case-insensitive substring search. First match wins.
 const DEFAULT_RULES = [
-  // alimentari
-  { p: 'mercadona|carrefour|lidl|aldi|dia\\b|supermercado|supermarket|condis|bonpreu|esclat|consum|hipercor|eroski|el corte ingles.*alimenta|fresh market|farmer|fruta|verdura|fruteria|alimentari|supermercati|coop|esselunga|conad|pam\\b|todis|simply|eurospin|penny market', c: 'alimentari' },
-  // ristorazione
-  { p: 'restaurante|restaurant|ristorante|bar\\b|cafe|cafeteria|caffe|pizzeria|trattoria|osteria|hamburguer|burger|mcdonald|kfc|domino|just eat|deliveroo|glovo|ubereats|uber eats|wolt|taberna|tasca|meson|bocateria|sandwich|sushi|ramen|noodle|cerveceria|bodega|terraza', c: 'ristorazione' },
-  // trasporti
-  { p: 'metro|subway|bus\\b|autobus|tram\\b|taxi|uber\\b|cabify|bolt\\b|renfe|rodalies|fgc|aerobus|bicing|emt\\b|tmb\\b|benzina|gasolina|repsol|bp\\b|galp|cepsa|parcheggio|parking|peaje|autopista|autostrada|atm\\b|amt\\b|trenitalia|italo\\b|flixbus|blablacar', c: 'trasporti' },
-  // viaggi
-  { p: 'vueling|ryanair|easyjet|iberia|lufthansa|british airways|air france|alitalia|ita airways|wizz|transavia|norwegian|aeromexico|latam|volo|flight|hotel|hostel|airbnb|booking\\.com|hotels\\.com|expedia|tripadvisor|museu|museo|monument|tour\\b|excursion|rent a car|hertz|europcar|sixt|avis', c: 'viaggi' },
-  // shopping
-  { p: 'amazon|zara|h&m|mango\\b|primark|stradivarius|bershka|pull.bear|massimo dutti|mediamarkt|fnac|apple store|ikea|leroy merlin|decathlon|cortefiel|el corte ingles|ebay|aliexpress|zalando|asos|shein|vinted', c: 'shopping' },
-  // salute
-  { p: 'farmacia|farmacia|pharmacy|drugstore|parafarmacia|medico|doctor|dentist|dentista|clinica|clinic|hospital|salute|health|gym|gimnasio|palestra|crossfit|yoga|pilates|fisio|fisioterapia', c: 'salute' },
-  // casa_barcelona — affitto BCN (Linda Mazzotti) + utenze
-  { p: 'linda mazzotti|mazzotti', c: 'casa_barcelona' },
-  { p: 'endesa|naturgy|gas natural|iberdrola|agbar|aigues|aguas de barcelona|comunitat de propietaris|comunidad de propietarios', c: 'casa_barcelona' },
-  // casa_roma — mutuo BNL + bollette Roma
-  { p: 'IT40P0100503235000000005226|banca nazionale del lavoro.*IT40|E\\.ON|eon energia|acea|hera\\b|enel\\b|eni gas|sorgenia|edison\\b|roma capitale|bolletta roma', c: 'casa_roma' },
-  // investimenti
-  { p: 'etoro|fineco|degiro|saxo bank|trading 212|interactive brokers|revolut.*invest|savings\\s+vault|revolut.*savings', c: 'investimenti' },
-  // entrate
-  { p: 'zeroco2|zero co2|stipendio|salary|payroll|pagamento stipendio|rimborso|refund|reembolso|accredito|income|affitti|canone', c: 'entrate' },
-  // giroconto (interni)
-  { p: 'giroconto|bonifico a me stesso|trasferimento tra conti|transfer.*own|own.*account|between accounts|revolut.*to.*revolut', c: 'giroconto' },
+  { keywords: ['mercadona','lidl','carrefour','supermercado','supermercat','fusteria','kings supermarket','tasbih supermercat','verdures','fruits','azienda agricola','panificio','granja','bazar chino'], category: 'alimentari' },
+  { keywords: ['restaurant','restaurante','bar ','cafe','caffè','pizzeria','trattoria','osteria','honest greens','sottobosco','mangianapoli','de tot al born','kif kif','sunta','alfredo','san nicola','kamikaze'], category: 'ristorazione' },
+  { keywords: ['atm ','azienda trasporti','atac','metro','cabify','uber','bolt','taxi','renfe','trenitalia','italo','parking','parcheggio','moneynet','autobus'], category: 'trasporti' },
+  { keywords: ['ryanair','vueling','iberia','easyjet','airbnb','booking','hotel','hostel','area archeologica','garden centre','global-e','cines'], category: 'viaggi' },
+  { keywords: ['el corte inglés','el corte ingles','zara','mango','amazon','wallapop','paypal','ebay','shopify'], category: 'shopping' },
+  { keywords: ['farmacia','pharmacy','dentist','medico','clinica','hospital','palestra','gym','cerclesport'], category: 'salute' },
+  { keywords: ['linda mazzotti','affitto','spese affitto','casa bcn'], category: 'casa_barcelona' },
+  { keywords: ['it40p0100503235000000005226','bnl','e on energia','enel','acea','tim ','vodafone','fastweb','mutuo'], category: 'casa_roma' },
+  { keywords: ['etoro','fineco','trading','degiro','revolut invest'], category: 'investimenti' },
+  { keywords: ['giroconto','accredita eur','nl14bunq','lt983250','de55202208','revolt21','bunq'], category: 'giroconto' },
+  { keywords: ['zeroco2','stipendio','accredito stipendio','accredito bonifico','rimborso','generali italia','irene culcasi'], category: 'entrate' },
+  { keywords: ['pagamento f24','pagamento i24','agenzia entrate','irpef'], category: 'tasse' },
 ];
 
 // Load custom rules from localStorage
@@ -323,9 +314,11 @@ function categorize(description) {
   for (const r of custom) {
     if (new RegExp(r.p, 'i').test(desc)) return r.c;
   }
-  // Default rules
+  // Default keyword rules — case-insensitive substring match, first match wins
   for (const r of DEFAULT_RULES) {
-    if (new RegExp(r.p, 'i').test(desc)) return r.c;
+    for (const kw of r.keywords) {
+      if (desc.includes(kw.toLowerCase())) return r.category;
+    }
   }
   return 'altro';
 }
@@ -562,8 +555,8 @@ function parseINGText(text) {
     // ING layout: DATA OP | DATA VALUTA | USCITE | ENTRATE | DESCRIZIONE
     // In text extraction the columns come as separate tokens
 
-    // Look ahead: find amount lines (numbers with dots/commas)
-    const amtRe = /^-?[\d\.]+,\d{2}$/;
+    // Look ahead: find amount lines (numbers with dots/commas, optional €)
+    const amtRe = /^-?[\d\.]+,\d{2}\s*€?$/;
 
     let uscita = 0, entrata = 0;
     let descParts = [];
@@ -641,7 +634,7 @@ async function parseBNLPDF(file) {
 function parseBNLItems(items) {
   const txs = [];
   const dateRe = /^(\d{2})\/(\d{2})\/(\d{4})$/;
-  const amtRe = /^-?[\d\.]+,\d{2}$/;
+  const amtRe = /^-?[\d\.]+,\d{2}\s*€?$/;
   const stopPattern = /SALDO|ESTRATTO CONTO|Pagina \d/i;
 
   // Group items by Y-coordinate (line)
@@ -759,8 +752,8 @@ async function parseRevolutCSV(file) {
           const dm = dateRaw.match(/(\d{4})-(\d{2})-(\d{2})/);
           if (dm) dataStr = `${dm[1]}-${dm[2]}-${dm[3]}`;
 
-          // Parse amount (European format: comma as decimal)
-          let importo = parseFloat(String(amountRaw).replace(/\./g, '').replace(',', '.')) || 0;
+          // Parse amount (handles European and standard format)
+          let importo = parseAmount(amountRaw);
 
           if (dataStr && importo !== 0) {
             txs.push({ data: dataStr, descrizione: desc, importo, currency });
@@ -775,8 +768,17 @@ async function parseRevolutCSV(file) {
 
 // ---- Amount parser ----
 function parseAmount(str) {
-  // European format: 1.234,56 → 1234.56
-  return parseFloat(str.replace(/\./g, '').replace(',', '.')) || 0;
+  if (!str) return 0;
+  // Strip €, spaces, non-breaking spaces
+  let s = str.toString().replace(/[€\s\u00A0]/g, '').trim();
+  if (!s) return 0;
+  // European format: punto migliaia, virgola decimale
+  // "1.234,56" → 1234.56, "-6,00" → -6.00
+  if (s.includes(',')) {
+    return parseFloat(s.replace(/\./g, '').replace(',', '.')) || 0;
+  }
+  // Standard format (no comma): "-6.00" → -6.00
+  return parseFloat(s) || 0;
 }
 
 // ============================================================
